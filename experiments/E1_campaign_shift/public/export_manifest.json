@@ -1,0 +1,13 @@
+{
+  "experiment": "E1",
+  "study": "public",
+  "canonical_source": "results/public",
+  "source_sha256": {
+    "metrics.csv": "14dd9c4b17f9bd6cf6e67649e9d65ed464ec007873ccc5cd29781eafe7d008bb",
+    "group_metrics.csv": "90193f7d0aa8c97e9bda4418517a3d75ba3915a80adcfd1545811d302d7fda3f"
+  },
+  "exported_row_counts": {
+    "metrics.csv": 36,
+    "group_metrics.csv": 324
+  }
+}

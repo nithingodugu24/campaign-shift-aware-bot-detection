@@ -1,0 +1,1501 @@
+
+PAGE 1
+Campaign-Shift-Aware Social Bot Detection with Temporal
+Coordination Modeling and Selective Prediction
+Author names and affiliations omitted
+Abstract
+Social bot detectors are commonly evaluated by randomly splitting accounts, although
+coordinated accounts may share campaign-specific behavior and therefore violate the practical
+assumption that deployment data resemble a random sample of the training mixture. This
+paper develops a campaign-aware evaluation and selective-prediction framework for studying
+detection reliability under campaign shift. The detector combines account-level profile
+and activity-rhythm features with a timestamp-aware co-activity graph. Candidate edges
+connect accounts that act on the same observable object within a temporal neighborhood;
+a parameterized mixture-of-exponentials kernel weights temporal proximity, while a time-
+randomization null estimates co-activity expected under a specified reference process. A graph
+neural network combines individual and relational evidence. For uncertainty, we evaluate
+bounded campaign-level prediction-set miscoverage using campaign-unit calibration. Because
+exchangeability across calibration and future campaigns cannot be presumed under campaign
+shift, the primary analysis treats this quantity empirically; a formal expected-risk guarantee
+is reported only if its assumptions and finite-sample requirements are independently justified.
+Neither marginal set coverage nor campaign-level miscoverage implies low error among
+automatically labeled accounts or robustness to arbitrary distribution shift. Leave-campaign-
+out cross-fitting is treated as a separate empirical evaluation strategy and is not assumed
+to inherit a fixed-model conformal guarantee. The experimental protocol compares random,
+campaign-disjoint, chronological and cross-dataset evaluation; includes graph, temporal and
+group-aware baselines; and reports detection, coverage, selective utility and computational
+cost. The manuscript specifies the evaluation protocol; empirical conclusions are reserved for
+experiments executed on audited datasets.
+Keywords: Social bot detection; campaign shift; temporal coordination; co-activity graph;
+conformal risk control; selective prediction
+1 Introduction
+Social bots have become a persistent challenge for online information ecosystems because they
+can amplify content, manipulate engagement signals, and participate in coordinated information
+operations. Their detection has consequently evolved from conventional account-level classifica-
+tion based on profile attributes toward approaches that incorporate temporal behavior, social
+relationships, interaction patterns, and graph-based representations. Machine learning classifiers
+can exploit account metadata and activity statistics, while graph neural networks (GNNs) enable
+the integration of relational evidence from interconnected accounts. Temporal representation
+learning further provides mechanisms for modeling the evolution of interactions and behavioral
+patterns. Despite these developments, the effectiveness of a social bot detector depends not only
+on its architecture and input features but also on whether its evaluation protocol reflects the
+conditions encountered during deployment.
+1
+
+PAGE 2
+A particularly important challenge arises when the accounts encountered during deployment
+belong to campaigns that were not represented during model development. Accounts participating
+in the same campaign may exhibit similar activity rhythms, repeatedly interact with common
+objects, share profile characteristics, or coordinate their actions within narrow temporal intervals.
+When accounts are randomly divided into training and test sets, members of the same campaign
+may appear in both partitions. A detector can consequently exploit campaign-specific regularities
+that are shared across the partitions, producing an optimistic estimate of its ability to generalize
+to previously unseen campaigns. This problem is not resolved simply by adopting a more
+expressive neural architecture: a model may achieve strong random-split performance while
+remaining sensitive to changes in campaign behavior, coordination strategies, or data-collection
+conditions.
+Campaign-aware evaluation therefore requires a distinction between several forms of general-
+ization. Random account-level evaluation measures performance on held-out accounts drawn
+from a potentially familiar mixture of campaigns. Campaign-disjoint evaluation instead holds
+out complete, independently identified campaigns or eligible collection units. Chronological
+evaluation examines performance on observations occurring after a specified temporal cutoff,
+whereas cross-dataset evaluation assesses transfer between separately collected corpora. These
+settings represent different sources of distributional variation and cannot be treated as equivalent
+evidence of robustness. In particular, chronological separation does not necessarily eliminate
+campaign overlap, and campaign-disjoint evaluation does not by itself establish generalization
+across platforms. A rigorous evaluation must therefore measure these settings separately and
+control information leakage across training, validation, calibration, and test partitions.
+Beyond generalization, reliable deployment requires the detector to recognize when its
+predictions may be insufficiently supported by the available evidence. Conventional classifiers
+usually produce a class label or probability estimate even for accounts exhibiting unfamiliar
+behavior or belonging to previously unseen campaigns. Selective prediction provides an alternative
+by permitting automatic decisions for selected accounts while deferring uncertain cases for
+additional analysis or human review. However, predictive discrimination, probability calibration,
+prediction-set coverage, and error among automatically classified accounts are distinct properties.
+High classification accuracy does not establish reliable uncertainty estimation, and high empirical
+coverage can be obtained by returning large prediction sets that provide limited decision utility.
+Moreover, marginal coverage over accounts does not establish low error within every campaign
+or guarantee reliable decisions under arbitrary distribution shift. Uncertainty assessment must
+therefore report both reliability and decision utility, with any formal risk-control claim supported
+by an explicitly defined calibration algorithm and its statistical assumptions.
+These challenges motivate the investigation of complementary individual and relational
+evidence. Account activity rhythms describe the temporal organization of an individual account,
+but do not necessarily reveal whether its actions are unusually synchronized with those of other
+accounts. Conversely, a static interaction graph may capture relationships without representing
+when the associated actions occurred. Temporal co-activity modeling can represent relationships
+between accounts that act on shared observable objects within a temporal neighborhood. Never-
+theless, temporal proximity alone is not sufficient evidence of coordinated automation: popular
+content, scheduled events, and legitimate communities can generate synchronized activity by
+chance or in response to common external stimuli. Null-model correction is therefore incorporated
+to estimate the extent to which observed co-activity exceeds a specified chance-based reference.
+Its usefulness must be established experimentally, because the validity of the correction depends
+2
+
+PAGE 3
+on the null model, available observations, and assumptions about the underlying activity process.
+This paper investigates a campaign-shift-aware social bot detection framework that integrates
+account activity rhythms, temporal co-activity relationships, profile characteristics, graph-based
+prediction, and selective uncertainty assessment. An account-rhythm encoder summarizes
+individual activity patterns from timestamped events. A temporal co-activity graph represents
+relationships between accounts based on their actions on shared observable objects, using a
+multiscale temporal kernel to weight event proximity and null-model correction to discount
+co-activity expected under a specified reference process. A profile feature extractor represents
+available account attributes and missingness information. These complementary representations
+are integrated by a graph neural network to estimate account-level class probabilities. The
+resulting predictions are evaluated under random, campaign-disjoint, chronological, and cross-
+dataset settings, while a separate calibration and selective-prediction stage examines prediction-set
+reliability, automatic-decision coverage, and abstention.
+The uncertainty component requires particular methodological care. We formulate campaign-
+unit calibration in terms of a bounded campaign-level loss and distinguish empirical reliability
+from formal risk control. A theoretical expected-risk guarantee is meaningful only when the
+implemented calibration procedure satisfies the assumptions of its associated result, including
+the definition of the calibration unit, the relevant exchangeability conditions, and the required
+properties of the loss and threshold-selection procedure. Exchangeability across calibration cam-
+paigns does not automatically imply conditional validity for each future campaign or robustness
+to arbitrary distribution shift. Similarly, cross-fitting or leave-campaign-out evaluation does not
+inherit a fixed-model conformal guarantee without an appropriate validity argument. Accordingly,
+the study treats measured campaign-level miscoverage and formal risk-control guarantees as
+separate forms of evidence.
+The research is organized around eight objectives. First, it quantifies the performance
+difference between random account-level and campaign-disjoint evaluation to determine whether
+conventional splitting overestimates generalization. Second, it evaluates whether timestamp-
+aware coordination improves unseen-campaign detection beyond individual-feature, static-graph,
+and temporal-graph baselines. Third, it isolates the contribution of null-model correction
+through controlled comparisons of corrected and uncorrected co-activity representations; this
+is distinct from the second objective, which evaluates the overall contribution of temporal
+coordination. Fourth, it assesses campaign-unit calibration using empirical miscoverage, deviation
+from a prespecified target, and uncertainty across independent evaluation units, while restricting
+theoretical claims to justified assumptions. Fifth, it characterizes the trade-off between automatic
+decisions and abstention using prediction-set size, singleton rate, abstention rate, selective
+accuracy, and selective Macro-F1. Sixth, it tests robustness to missing events, timestamp
+perturbations, low-activity accounts, and synchronized legitimate communities where reliable
+annotations are available. Seventh, it measures graph-construction, training, and inference costs
+as the number of accounts and interactions increases. Eighth, it evaluates cross-dataset transfer
+and the associated changes in detection, calibration, and selective-prediction behavior.
+The principal contributions are summarized as follows:
+• Campaign-aware evaluation:We establish a leakage-controlled evaluation protocol that
+distinguishes random account-level performance from campaign-disjoint, chronological, and
+cross-dataset generalization, thereby enabling a more systematic assessment of performance
+under different forms of distributional variation.
+3
+
+PAGE 4
+• Temporal coordination representation:We develop a representation that integrates
+individual activity rhythms, timestamp-aware co-activity relationships, null-model correc-
+tion, and account-profile characteristics. Controlled comparisons and component ablations
+are designed to quantify the incremental contribution of each component.
+• Campaign-unit uncertainty assessment:We formulate campaign-level miscoverage
+using a bounded loss and specify the assumptions relevant to campaign-unit calibration.
+The evaluation distinguishes empirical reliability from formal risk-control guarantees rather
+than inferring theoretical validity from observed coverage alone.
+• Selective prediction under campaign shift:We integrate selective prediction into
+the evaluation framework to quantify the relationship between prediction-set reliability,
+automatic-decision coverage, and abstention, including the implications for human review.
+• Systematic experimental assessment:We define experiments covering campaign-shift
+degradation, coordination modeling, null-correction ablations, calibration, robustness, com-
+putational scalability, and cross-dataset generalization, with statistical analysis conducted
+at the appropriate evaluation-unit level.
+The contribution of this work is not based merely on combining graph neural networks,
+temporal features, and conformal prediction, since these methodological families have established
+precedents. Instead, the study examines their interaction within a campaign-aware evaluation
+framework and tests three distinct questions: whether temporal coordination improves detection
+on unseen campaigns, whether the improvement persists under controlled component comparisons,
+and whether selective uncertainty assessment provides useful reliability–coverage trade-offs under
+explicitly stated assumptions. The strength of these contributions must be established through
+comparison with the closest existing methods, verified data, controlled experiments, and statistical
+evidence. No numerical improvement or formal guarantee is inferred solely from the proposed
+architecture.
+The remainder of this paper is organized as follows. Section 2 reviews related work and
+identifies the research gap. Section 3 summarizes the system architecture, and Section 4 defines
+the problem and its assumptions. Section 5 describes the proposed method. Section 6 presents
+the datasets, evaluation protocols, baselines, metrics, and ablation studies. Section 7 summarizes
+the framework and identifies directions for future work.
+2 Related Work and Research Gap
+Social bot detection has evolved from account-level classification to multimodal representation
+learning, heterogeneous graph analysis, dynamic network modeling, and coordinated group
+detection. Despite these advances, predictive performance on conventional benchmark partitions
+does not necessarily establish generalization to previously unseen campaigns or reliable automated
+decisions. This section reviews representative studies, classifies their methodological contributions,
+and positions the proposed campaign-shift-aware framework relative to existing approaches.
+Individual-feature and multimodal detection.Cresci [1] reviews a decade of social bot
+detection research and discusses the evolution of detection strategies in response to increasingly
+sophisticated automated accounts. Feng et al. [2] introduce TwiBot-20, a benchmark containing
+account profiles, tweets, and network relationships. Their evaluation demonstrates the importance
+of diverse and sufficiently informative benchmark data for reproducible model comparison. Feng
+4
+
+PAGE 5
+Table 1: Classification of representative social bot detection studies according to behavioral
+representation and evaluation capability.
+Behavioral rep-
+resentation
+Detection and representation
+methods
+Generalization and reliability
+considerations
+Individual and
+multimodal fea-
+tures
+Cresci [1]; TwiBot-20 [2]; SA-
+TAR [3]
+Feature robustness, account di-
+versity, and evaluation beyond
+conventional account-level parti-
+tions.
+Temporal behav-
+ior and coordina-
+tion
+Chavoshi et al. [4]; Khaund et
+al. [5]
+Distinguishing recurring or coor-
+dinated activity from generaliza-
+tion to previously unseen cam-
+paigns.
+Heterogeneous
+graph learning
+BotRGCN [6]; RGT [7]; TwiBot-
+22 [8]
+Relational representation quality,
+benchmark reproducibility, and
+campaign-disjoint evaluation.
+Dynamic graph
+and group inter-
+actions
+BotDGT [9]; BotSTIP [10] Temporal network evolution,
+group interactions, and gener-
+alization beyond the original
+evaluation setting.
+Conformal predic-
+tion and risk con-
+trol
+Angelopoulos and Bates [11]; An-
+gelopoulos et al. [12]
+Calibration assumptions,
+bounded-loss guarantees,
+prediction-set coverage, and
+selective utility.
+Proposed
+framework
+Temporal co-activity, null-
+model correction, profile fea-
+tures, and relational predic-
+tion
+Campaign-disjoint eval-
+uation, campaign-unit
+calibration, and selective
+prediction under explicit
+assumptions.
+et al. [3] propose SATAR, a self-supervised account representation learning approach that uses
+multiple account information sources to improve bot detection. These studies establish the value
+of multimodal features and learned account representations. However, the use of diverse features
+alone does not establish generalization to campaigns excluded from training. In comparison,
+the proposed framework investigates whether explicit temporal coordination provides additional
+information beyond individual account representations under campaign-disjoint evaluation.
+Temporal behavior and coordinated activity.Chavoshi et al. [4] develop a system for
+detecting and archiving bots using temporal activity patterns and correlations between accounts.
+Their work illustrates how synchronized behavior can provide evidence that is difficult to obtain
+from isolated account characteristics. Khaund et al. [5] survey social bot coordination during
+online campaigns and describe methods for analyzing coordinated account behavior. These
+studies establish that temporal synchronization and coordinated activity are existing research
+directions. Consequently, the novelty of the proposed framework cannot rest on introducing
+coordination analysis alone. Instead, it must demonstrate whether timestamp-aware co-activity
+construction and null-model correction improve detection on campaigns excluded from model
+development.
+Heterogeneous graph representation learning.Feng et al. [6] introduce BotRGCN, which
+combines relational graph convolution with heterogeneous social relationships and multimodal
+account information. Feng et al. [7] develop relational graph transformer methods that exploit
+different types of social relations for bot detection. Feng et al. [8] introduce TwiBot-22, a large-
+5
+
+PAGE 6
+scalegraph-basedbenchmarkthatsupportsthesystematiccomparisonofdetectionmethodsacross
+multiple datasets. Collectively, these contributions demonstrate the importance of relational
+information, heterogeneous graph representations, and standardized evaluation. Nevertheless, a
+graph-based architecture does not automatically establish robustness to campaign shift. The
+proposed framework therefore requires controlled comparisons against heterogeneous graph
+baselines to isolate the additional value of timestamp-aware co-activity modeling.
+Dynamic graph and group-interaction modeling.He et al. [9] propose BotDGT, which
+modelstheevolvingstructureofsocialnetworksthroughdynamicgraphtransformers. Themethod
+integrates structural information from historical graph snapshots with temporal representations
+of network evolution. Liu and Ma [10] introduce BotSTIP, which uses spatiotemporal group
+interactions, hypergraph-based representations, and temporal attention to model relationships
+among social accounts. BotSTIP is particularly relevant because it already addresses temporal
+and group-level interactions. Accordingly, the proposed framework must be compared directly
+with such methods rather than claiming novelty from temporal and relational feature integration
+alone. Its potential distinction lies in the combination of null-corrected temporal co-activity,
+explicit campaign-disjoint evaluation, and campaign-unit uncertainty assessment. Whether this
+combination provides an empirical advantage remains to be established experimentally.
+Conformal prediction and uncertainty control.Angelopoulos and Bates [11] provide a
+comprehensive introduction to conformal prediction and explain the assumptions under which
+prediction sets achieve marginal coverage guarantees. Angelopoulos et al. [12] extend conformal
+calibration to suitable bounded loss functions through conformal risk control. These results
+provide a foundation for evaluating prediction reliability beyond classification accuracy. However,
+marginal coverage and expected-loss control are distinct properties, and neither automatically
+implies conditional reliability for every previously unseen campaign. The proposed framework
+therefore defines the calibration unit, bounded loss, and exchangeability assumptions explicitly.
+Campaign-level risk control must be justified for the specified calibration procedure, while
+account-level coverage, selective accuracy, and abstention are evaluated separately.
+Research gap and positioning.The literature establishes that multimodal features, temporal
+behavior, heterogeneous graphs, dynamic network models, and conformal prediction are valuable
+methodological components. However, these components address different aspects of detection and
+cannot be assumed to provide campaign-level reliability when combined without further analysis.
+Three issues motivate the proposed investigation: the need to distinguish random account-level
+performance from campaign-disjoint generalization; the need to measure the incremental value
+of temporal coordination against existing dynamic and group-aware models; and the need to
+evaluate selective prediction under calibration assumptions consistent with the claimed risk
+guarantee.
+The proposed framework investigates these issues through a unified experimental design
+comprising temporal co-activity representation, relational prediction, campaign-disjoint and
+chronological evaluation, campaign-unit calibration, and selective decision-making. Its contri-
+bution is not the isolated introduction of temporal graphs or conformal prediction, but the
+explicit formulation and evaluation of their roles in campaign-shift-aware social bot detection.
+The novelty and practical value of this formulation must be demonstrated through verified
+comparisons, leakage-controlled experiments, component ablations, and statistical uncertainty
+analysis.
+6
+
+PAGE 7
+3 System Architecture
+The proposed system architecture integrates temporal behavior analysis, coordination-aware
+graph construction, relational learning, campaign-aware evaluation, and selective prediction
+to detect social bots under campaign shift. Its purpose is to determine whether temporal
+coordination improves detection on previously unseen campaigns and whether uncertainty-aware
+prediction can identify accounts suitable for automatic classification. The overall processing
+pipeline is illustrated in Fig. 1.
+Figure 1: Overview of the campaign-shift-aware social bot detection framework. Calibration and
+empirical evaluation are separate stages; any risk guarantee depends on the assumptions of the
+selected calibration procedure.
+Input Data Sources:The purpose of this component is to provide the information required
+for bot detection. It collects account profiles, timestamped activity events, optional follow
+relationships, ground-truth labels, and campaign identifiers. These data provide static account
+characteristics, temporal behavior, network relationships, and supervision for model training.
+Campaign identifiers also enable the evaluation of generalization to previously unseen campaigns.
+Account Rhythm Encoder:This component identifies temporal regularities in individual
+7
+
+PAGE 8
+account activity. It processes timestamped events to generate weekly activity histograms, inter-
+event-time distributions, and spectral summaries when sufficient observations are available. These
+features represent how accounts distribute their activity over time and provide behavioral evidence
+that complements static profile information. Missingness indicators distinguish insufficient
+observations from genuine zero-valued measurements.
+Co-Activity Graph Builder:This component identifies potential coordination between
+accounts interacting with shared objects at similar times. It computes temporal proximity using
+a multiscale kernel and constructs weighted relationships between accounts. A time-permutation
+null model reduces associations attributable to chance temporal overlap under the specified null
+assumptions. The resulting graph provides relational evidence of unusual co-activity that cannot
+be captured by analyzing accounts independently.
+Profile Feature Extractor:This component represents the static characteristics of each
+account. It processes available metadata, such as account age, follower and following counts,
+and profile completeness, together with missingness indicators. The resulting representation
+provides complementary evidence about account characteristics and helps the detector combine
+profile-based and temporal behavioral information.
+GNN Relational Predictor:This component combines individual account characteristics
+with information from related accounts to classify human and bot accounts. It receives profile
+features, temporal representations, coordination statistics, and the constructed graph. A graph
+neural network performs message passing over the available co-activity and follow relationships to
+learn relational account representations. A classification layer converts these representations into
+class probabilities, enabling the detector to exploit coordination patterns that may be overlooked
+by feature-only classifiers.
+Evaluation Protocol:This component determines whether the detector generalizes beyond
+the accounts and campaigns observed during training. It establishes random account-level,
+campaign-disjoint, multi-campaign holdout, chronological, and cross-dataset evaluation settings,
+where applicable. These settings measure different forms of generalization and help reveal
+performance inflation caused by campaign-specific information leakage. Training, calibration,
+and final test data are separated to ensure that test labels do not influence model fitting or
+model selection.
+Campaign-Unit Calibration: This component selects a decision threshold using held-out
+calibration units, such as campaigns, without using final test labels. It evaluates the prescribed
+bounded loss across candidate thresholds and applies the selected conformal risk-control procedure.
+Its purpose is to provide a statistically principled basis for uncertainty-aware decisions under
+the assumptions of the corresponding method. If the target risk is infeasible or the required
+exchangeability assumptions are not justified, this limitation is explicitly reported.
+Detection on Test Campaigns: This component evaluates the trained detector on
+previously unseen test accounts. It receives the fixed trained model and the permitted test
+features and graph information, then produces human and bot class probabilities. The predictions
+are compared with suitable baseline methods using Macro-F1, precision–recall area under the
+curve (PR-AUC), and Matthews correlation coefficient (MCC). This component quantifies
+detection performance under each evaluation protocol without using test labels to adjust the
+model or calibration threshold.
+Selective Prediction Output:This component determines whether each account can be
+classified automatically or requires further review. It receives the prediction set generated by the
+calibrated decision rule. If the set contains exactly one class, the corresponding label is emitted
+8
+
+PAGE 9
+automatically. If the set contains multiple classes, the system abstains and refers the account
+for human review. This mechanism makes the trade-off between automatic classification and
+uncertainty explicit.
+Output Metrics: This component measures both classification performance and the relia-
+bility of selective decisions. It uses ground-truth test labels, predictions, prediction sets, and
+abstention decisions to calculate Macro-F1, PR-AUC, MCC, singleton rate, selective accuracy, ab-
+stention rate, prediction-set size, empirical coverage, and miscoverage. Reporting these measures
+separately distinguishes overall discrimination performance from the reliability and coverage of
+automatic decisions.
+The interaction among these components forms an end-to-end pipeline for campaign-aware
+social bot detection. The account rhythm encoder and profile feature extractor represent
+individual behavior, while the co-activity graph builder captures temporal relationships. The
+GNN relational predictor integrates these representations to generate class probabilities. The
+evaluation protocol establishes the generalization setting, and the calibration and selective
+prediction components determine which predictions can be issued automatically. Algorithm 1
+in Section 5 summarizes the complete processing sequence, including data preparation, model
+training, calibration, test-time prediction, and performance evaluation.
+The detailed processing sequence is specified once in Algorithm 1 in Section 5; this architecture
+section is intended as a high-level overview rather than a second algorithmic specification.
+The complete execution sequence is specified once in Algorithm 1 in Section 5. This section
+provides the conceptual architecture; the detailed algorithm is not duplicated.
+4 Problem Formulation
+4.1 Problem Definition and Data Representation
+LetU denote a collection of observed social media accounts. Each accountu∈Uis represented
+by its profile attributes, temporal activity, and, where available, relational information. Its
+observable event sequence is defined as
+Eu ={(tk,ak,ok)}nu
+k=1, (1)
+where tk denotes the timestamp of eventk, ak represents the event or action type,ok identifies
+the associated object, andnu is the number of observed events. Depending on the dataset,
+an object may correspond to a post, hashtag, or target account. The profile representation is
+denoted by pu∈Rdp, wheredp is the number of available profile features. The binary class label
+is yu∈{0, 1}, with 0 representing a human account and1 representing a social bot.
+When follow relationships are available, they are represented byGf = (U,Ef), whereEf
+denotes the observed follow edges. Follow relationships provide relational context but are not
+treated as evidence of temporal interaction unless corresponding timestamps are available. All
+representations are constructed exclusively from fields supported by the selected dataset.
+Let c(u) denote the independently annotated campaign membership of accountu, whenever
+reliable campaign annotations are available. The set of accounts belonging to campaigng is
+denoted byUg. Campaign membership is used to define evaluation groups and calibration units;
+it is not assumed to be available as a predictive feature at inference time. If campaigns are
+approximated using collection batches or behavioral heuristics, these groups must be identified
+as proxies rather than verified campaigns.
+9
+
+PAGE 10
+The central problem is that a detector evaluated using randomly partitioned accounts
+may exploit campaign-specific regularities shared across training and test data. Consequently,
+its measured performance may not represent its ability to identify bots in previously unseen
+campaigns. The proposed study therefore examines whether temporal coordination modeling
+improves detection under campaign-disjoint evaluation and whether uncertainty-aware prediction
+can reduce unreliable automatic decisions.
+4.2 Campaign-Shift-Aware Generalization
+LetCtr andCte denote the sets of campaigns represented in the training and test partitions,
+respectively. The campaign-disjoint evaluation protocol imposes
+Ctr∩Cte = ∅. (2)
+This constraint prevents annotated campaigns from appearing in both partitions. It must be
+complemented by duplicate removal, identifier-overlap checks, and feature-construction rules that
+prevent information from the test period or test labels from entering training.
+LetDtr denote the training distribution andDte the test distribution. Campaign shift refers
+to a change in the distribution of account features, coordination patterns, or class-conditional
+behavior between training and previously unseen campaigns. In general,
+Dtr̸=Dte, (3)
+although the precise form and magnitude of this difference must be established empirically. This
+notation expresses the motivation for campaign-shift-aware evaluation; it does not imply that all
+distributional changes can be detected or corrected.
+Three complementary evaluation settings are considered. First, random account splitting mea-
+sures performance when accounts may share campaign-specific characteristics across partitions.
+Second, campaign-disjoint splitting evaluates generalization to unseen campaigns. Third, chrono-
+logical evaluation restricts feature construction to information available at the prediction time.
+Cross-dataset evaluation provides an additional test of transfer to a separately collected corpus.
+These settings are analyzed separately because they represent different sources of distributional
+variation and are not interchangeable.
+4.3 Account Representation and Detection
+For each accountu, the proposed detector constructs a representation using three complementary
+evidence sources: profile characteristics, temporal activity patterns, and temporal coordina-
+tion with other accounts. Lethp
+u, hr
+u, and hc
+u denote the corresponding profile, rhythm, and
+coordination representations. The integrated account representation is defined as
+xu =ϕψ(hp
+u∥hr
+u∥hc
+u), (4)
+where∥denotes feature concatenation andϕψdenotes the feature-integration function, parame-
+terized separately from the classifier. The representation is subsequently supplied to a classifier
+parameterized byθ(with classifier parameters distinct fromψ):
+fθ(xu) = ˆpu = (ˆpu,0, ˆpu,1),
+∑
+y∈{0,1}
+ˆpu,y = 1, (5)
+10
+
+PAGE 11
+where ˆpu,y is the estimated probability that accountu belongs to classy.
+The conventional class prediction is
+ˆyu = arg max
+y∈{0,1}
+ˆpu,y. (6)
+However, the most probable class is not necessarily sufficiently reliable for automatic deployment.
+The detector therefore also supports uncertainty-aware prediction, in which a prediction set is
+constructed and accounts with unresolved predictions may be deferred for human review.
+The temporal coordination representation is intended to capture synchronized or closely
+related activity that cannot be fully described by an account’s individual activity rhythm. Its
+effectiveness is not assumed in advance. It is evaluated through comparisons with profile-only,
+rhythm-only, and coordination ablations under identical data partitions and evaluation conditions.
+This design directly tests whether coordination information contributes additional predictive
+value, particularly when the test campaigns are absent from training.
+4.4 Prediction Sets and Account-Level Reliability
+Let Γτ(xu)⊆{0, 1}denote the prediction set returned for accountu, whereτis a threshold
+selected by the specified set-construction and calibration procedure. A singleton set supports an
+automatic class assignment, whereas a set containing both classes indicates that the system ab-
+stains from making an automatic decision. An empty set, if permitted by the chosen construction,
+also requires review.
+The account-level miscoverage indicator is defined as
+ℓu(τ) = I [yu /∈Γτ(xu)], (7)
+where I[·] is the indicator function. If the prediction sets are nested and become smaller asτ
+increases, thenℓu(τ) is non-decreasing inτ. This monotonicity is conditional on the actual
+set-construction rule and must be verified for its implementation.
+For a campaigng containing|Ug|evaluated accounts, campaign-level miscoverage is defined
+as
+Lg(τ) = 1
+|Ug|
+∑
+u∈Ug
+ℓu(τ), 0≤Lg(τ)≤1. (8)
+This bounded quantity measures the fraction of accounts in a campaign whose true labels are
+excluded from their prediction sets. Averaging within each campaign gives every campaign a
+well-defined risk value regardless of its number of accounts. However, the definition alone does
+not establish statistical exchangeability or a formal risk guarantee.
+LetG1,...,Gm denote the calibration campaigns andGm+1 a future campaign. A campaign-
+unit calibration procedure uses the calibration data to select a thresholdˆτ. For a prespecified
+risk toleranceα∈(0, 1), the desired expected campaign-level risk target is
+E
+[
+LGm+1(ˆτ)
+]
+≤α. (9)
+The expectation is over the relevant calibration and future campaign sampling process. This
+inequality is a target for evaluation, not an established guarantee of the proposed detector. Its
+validity depends on the exact calibration algorithm, the definition of the calibration unit, and
+the assumptions required by the corresponding statistical result. In particular, the necessary
+11
+
+PAGE 12
+exchangeability conditions must be justified rather than inferred from campaign-disjoint parti-
+tioning alone. Arbitrary campaign shift does not automatically satisfy these conditions, and the
+target does not imply a guarantee for every individual unseen campaign.
+Accordingly, campaign-level miscoverage will be reported empirically on held-out campaigns.
+A formal risk-control claim will be made only if the implemented calibration procedure and its
+assumptions support the stated result. Otherwise, the analysis will be interpreted as an empirical
+assessment of campaign-level reliability.
+4.5 Selective Prediction and Review Burden
+For operational use, an account is eligible for automatic labeling when its prediction set contains
+exactly one class. Define the automatic-label indicator as
+Au = I [|Γτ(xu)|= 1]. (10)
+Accounts whose prediction sets are not singletons are deferred for review. For a test set containing
+N accounts, the singleton rate and abstention rate are
+SR = 1
+N
+N∑
+u=1
+Au, AR = 1−SR. (11)
+These measures quantify the fraction of accounts receiving automatic labels and the corresponding
+review burden.
+The correctness of automatic decisions is measured separately using selective accuracy:
+SA =
+∑N
+u=1Au I[ˆyu =yu]
+∑N
+u=1Au
+, (12)
+provided that at least one account receives an automatic label. For singleton prediction sets,ˆyu
+is the unique class inΓτ(xu). If the classifier’s highest-probability prediction is not the unique
+class returned by the prediction-set procedure, the automatic label must instead be defined
+consistently as that unique class.
+Empirical prediction-set coverage is defined as
+Coverage = 1
+N
+N∑
+u=1
+I [yu∈Γτ(xu)]. (13)
+Coverage measures whether the true class is included in the prediction set, whereas selective
+accuracy measures the correctness of decisions among automatically labeled accounts. A non-
+singleton set can contain the true class without supporting an automatic decision. Therefore,
+coverage, campaign-level miscoverage, selective accuracy, singleton rate, and abstention are
+distinct measures and must not be interpreted as substitutes for one another.
+4.6 Research Objectives and Evaluation Criteria
+The formulation establishes eight linked evaluation objectives.
+O1: Quantify campaign-shift degradation.Measure the change in detection performance
+between random account splits and campaign-disjoint splits using Macro-F1, PR-AUC, and
+complementary classification metrics.
+12
+
+PAGE 13
+O2: Evaluate unseen-campaign detection.Determine whether the proposed representa-
+tion maintains discriminative performance on campaigns excluded from training.
+O3: Isolate the contribution of temporal coordination.Compare the complete detector
+with profile-only, rhythm-only, and coordination-removal variants to quantify the incremental
+contribution of temporal coordination modeling.
+O4: Assess prediction reliability. Measure empirical prediction-set coverage and
+campaign-level miscoverage on held-out campaigns, distinguishing observed performance from
+any formally justified risk-control guarantee.
+O5: Quantify selective-prediction utility. Analyze the trade-off between selective
+accuracy, singleton rate, and abstention as the prediction-set threshold varies.
+O6: Evaluate robustness.Assess sensitivity to missing events, timestamp perturbations,
+low-activity accounts, and legitimate synchronized behavior.
+O7: Measure computational cost. Report training and inference time, memory con-
+sumption, and the computational overhead introduced by temporal coordination modeling and
+calibration.
+O8: Examine cross-dataset generalization. Evaluate transfer to an independently
+collected dataset under a documented label-mapping and feature-compatibility protocol.
+The evaluation is multi-objective rather than a claim that one scalar score captures all
+deployment requirements. Computational cost is reported as a tuple
+Ccomp = (Tgraph,T train,T infer,M peak), (14)
+where the terms denote graph-construction time, model-training time, inference time per account
+(or batch, stated explicitly), and peak memory consumption. These quantities are reported
+separately with the hardware and workload specified; they are not combined using arbitrary
+weights. Detection quality, prediction-set reliability, selective utility, and computational cost are
+therefore interpreted jointly, because optimizing one criterion need not improve the others.
+The experiments are designed to determine whether temporal coordination modeling improves
+detection on unseen campaigns, whether the resulting predictions remain empirically reliable,
+and whether selective prediction offers a useful balance between automatic decision quality and
+review workload. Controlled ablations, leakage-aware data partitions, and separately reported
+computational measurements provide the evidence needed to assess these objectives.
+5 Proposed System
+The proposed Campaign-Shift-Aware Social Bot Detection framework is designed to identify social
+bots while evaluating the reliability of detection on previously unseen campaigns. Conventional
+account-level classification can achieve high performance under random data splits when training
+and test accounts share campaign-specific behavioral patterns. However, such performance
+does not necessarily demonstrate generalization to campaigns with different activity rhythms,
+coordination structures, or account characteristics. The proposed system addresses this limitation
+by combining individual account representations, temporal coordination modeling, graph-based
+relational prediction, campaign-aware evaluation, and selective prediction.
+As established in the problem formulation, each accountu∈Uis represented by a profile
+vector pu, a timestamped event sequenceEu, and a binary labelyu∈{0, 1}, where the two
+classes denote human and bot accounts. Campaign membership is represented byc(u) whenever
+13
+
+PAGE 14
+this information is available. The objective is to learn a predictor that exploits both individual
+behavioral evidence and relationships among accounts while evaluating its performance under
+explicitly defined campaign and temporal partitions. In addition, the system must distinguish
+accounts that can be automatically labeled from those for which the available evidence does not
+support a unique decision.
+The proposed system comprises account-level representation learning, temporal co-activity
+graph construction, null-model correction, relational classification, campaign-aware evaluation,
+calibration, and selective prediction. The account-level modules characterize individual behavior,
+whereas the graph module captures temporal relationships between accounts. The relational
+predictor integrates these sources of evidence, and the final decision modules assess generalization
+and determine whether a prediction should be issued automatically. The complete execution
+procedure is summarized in Algorithm 1.
+Input representation and campaign-aware partitioning:The input component receives
+account profiles, timestamped events, optional follow relationships, ground-truth labels, and
+campaign identifiers. Each event is represented as(tk,ak,ok), wheretk denotes the event times-
+tamp, ak denotes the action type, andok denotes the associated observable object. Depending
+on dataset availability, an object may represent a URL, hashtag, or another shared resource. The
+optional follow graph is denoted byGf = (U,Ef).
+Before feature construction, the data are partitioned according to the intended evaluation
+setting. For campaign-disjoint evaluation, training and test campaign sets must satisfyCtr∩Cte =
+∅. For chronological evaluation, only events available by the prediction cutoff are used to generate
+features and graph edges. Training, calibration, and final test data are kept separate according
+to the selected evaluation protocol. The predictor is trained using labeled training accounts,
+calibration labels are reserved for the prescribed threshold-selection procedure, and test labels
+are withheld until final evaluation. This separation directly operationalizes the campaign-disjoint
+and information-leakage constraints specified in the problem formulation.
+Account rhythm representation:The account rhythm encoder characterizes the temporal
+organization of individual account activity. Its input is the event sequenceEu of each account.
+It extracts complementary statistics that describe activity distribution and temporal regularity.
+Weekly activity histograms represent how activity is distributed across the week, while inter-event-
+time distributions characterize the intervals between consecutive events. Spectral summaries can
+additionally capture periodic patterns when the event history is sufficiently long and informative.
+Let ru denote the resulting temporal representation. The construction can be expressed as
+ru =ϕrhythm(Eu;T), (15)
+whereϕrhythm denotes the specified feature-extraction procedure andT denotes the prediction
+cutoff. The cutoff ensures that no event occurring after the permitted observation time contributes
+to the representation. Missingness indicators distinguish unavailable or insufficient temporal
+evidence from genuine zero-valued statistics. Any normalization parameters are estimated from
+training data and subsequently applied unchanged to calibration and test accounts.
+This representation provides individual behavioral evidence but does not, by itself, establish
+whether an account participates in coordinated activity. The next component therefore models
+temporal relationships among accounts.
+Temporal co-activity graph construction:The co-activity graph builder identifies pairs
+of accounts that interact with shared objects within temporally proximate intervals. For account
+14
+
+PAGE 15
+u, letEu(o) denote the timestamps of events associated with objecto. A multiscale kernel
+measures temporal proximity at different time scales:
+κθ(δ) =
+M∑
+m=1
+πm exp
+(
+−δ
+λm
+)
+, (16)
+subject to πm≥0, ∑M
+m=1πm = 1, and λm > 0. Here, δis the absolute time difference
+between two events,πm denotes the weight assigned to temporal scalem, andλm controls the
+decay rate at that scale. Shorter decay parameters emphasize near-simultaneous activity, whereas
+longer parameters allow associations across wider intervals. The weights and decay parameters
+determine how evidence from different temporal scales is combined. In this implementation, these
+parameters are selected using training/validation data and then fixed before final testing; the
+discrete null estimation and graph sparsification steps are not treated as end-to-end differentiable
+operations.
+The raw co-activity score between accountsu and v is calculated by aggregating temporal
+proximity over their shared observable objects:
+˜wuv =
+∑
+o∈Ouv
+∑
+t∈Eu(o)
+∑
+t′∈Ev(o)
+κθ(|t−t′|), (17)
+whereOuv denotes the set of shared objects observed for the two accounts within the permitted
+observation window. The score increases when the accounts repeatedly interact with shared
+objects at temporally proximate times. This operation constructs a candidate relationship
+between accounts rather than directly assigning a bot label.
+The kernel in Equation 16 is a temporal proximity function. It is not a Hawkes-process model
+and does not establish causal excitation between account activities. Its purpose is to represent
+multiscale synchronization in a form that can be incorporated into a relational classifier.
+Null-model correction and graph sparsification:Raw co-activity can be inflated by
+highly popular objects, common events, or chance temporal overlap. To reduce this effect, the
+system estimates a null distribution using constrained time randomization within predefined
+observation intervals. Where the dataset supports it, randomization is stratified by object
+and coarse time window so that broad object popularity and time-varying activity are not
+indiscriminately destroyed. The exact randomization scheme is documented and validated against
+synchronized legitimate activity where suitable annotations are available. The resulting null
+distribution represents co-activity expected under that specific procedure, not a universal model
+of organic behavior; a simple within-account permutation alone cannot fully control for shared
+external events.
+Let µ0
+uv and σ0
+uv denote the estimated mean and standard deviation of the null scores for
+account pair(u,v ). The null-corrected edge weight is defined as
+wuv = max
+(
+0, ˜wuv−µ0
+uv
+σ0uv +ε
+)
+, (18)
+whereε>0 prevents numerical instability when the estimated null standard deviation is small.
+Pairs with insufficient null variation or too few shared events are handled using a prespecified
+minimum-support rule and are not allowed to acquire arbitrarily large weights solely because
+σ0
+uv is near zero. The corrected score measures the excess of observed co-activity relative to the
+chosen null distribution. A positive corrected score indicates that the observed value exceeds the
+15
+
+PAGE 16
+estimated null mean; it does not, on its own, establish statistical significance or malicious intent.
+The graph is sparsified by removing edges below a predetermined threshold and retaining at
+most k neighbors per account. These parameters, the number of permutations, random seeds,
+active-interval definition, and object-frequency cap are documented and selected using training
+data only. Where computational approximations are used for popular objects, their effect is
+validated against more direct permutation estimates on training data. The resulting weighted
+graph is denoted byGc = (U,Ec, Wc), whereEc contains the retained edges andWc contains
+their corrected weights.
+This procedure operationalizes the coordination component of the problem formulation. It
+reduces the influence of some forms of chance co-activity while preserving relationships that are
+unusual under the selected null model. Its effectiveness must be established empirically through
+comparisons with uncorrected and fixed-window graph constructions.
+Coordination statistics and feature integration:The graph structure provides relational
+evidence, while account-level coordination statistics summarize the local structure around each
+account. The system derives measures such as weighted degree, local clustering, and synchronized-
+event fraction. Letqu denote the vector of these coordination statistics. The weighted degree
+summarizes the strength of an account’s retained temporal relationships, local clustering measures
+connectivity among its neighbors, and synchronized-event fraction characterizes the proportion of
+its observed activity associated with temporally coordinated events under the chosen definition.
+The initial representation combines profile features, temporal features, and coordination
+statistics:
+h(0)
+u =ϕproj (pu∥ru∥qu), (19)
+where∥denotes concatenation andϕproj denotes a learned projection into a common repre-
+sentation space. The profile vector is processed using the training-fitted transformations, while
+missingness indicators are retained where necessary. The projection allows heterogeneous features
+to be integrated into a common input for relational learning. Its architecture and dimensions are
+specified in the experimental configuration.
+This integration is important because static account characteristics, individual activity
+rhythms, and temporal coordination describe different aspects of behavior. Combining them
+allows the classifier to use multiple sources of evidence without assuming that any one feature
+group is sufficient.
+Graph neural network relational prediction:The relational predictor uses the initial
+account representations and graph relationships to learn account embeddings for binary classifica-
+tion. Its purpose is to combine individual behavioral evidence with information from connected
+accounts. If the follow graph is available and permitted by the dataset, it is incorporated as a
+separate relation type rather than being treated as equivalent to temporal coordination.
+LetR denote the set of available graph relation types andNr(u) the neighbors of accountu
+under relationr. At message-passing layerℓ, the representation is updated as
+h(ℓ+1)
+u =σ
+
+W(ℓ)
+s h(ℓ)
+u +
+∑
+r∈R
+∑
+v∈Nr(u)
+α(r)
+uv W(ℓ)
+r h(ℓ)
+v
+
+, (20)
+where W(ℓ)
+s transforms the account’s own representation,W(ℓ)
+r transforms neighbor rep-
+resentations for relationr, α(r)
+uv is the normalized contribution of neighborv, and σ(·) is a
+nonlinear activation function. The exact neighbor-weighting and normalization rule is fixed in
+16
+
+PAGE 17
+the implementation and documented in the experimental configuration.
+After the final message-passing layerL, a classification head produces the human and bot
+probabilities:
+ˆpu = softmax
+(
+Wclsh(L)
+u + bcls
+)
+, (21)
+where Wcls and bcls are the classifier parameters. The predicted class is the class with the
+largest estimated probability when a conventional hard prediction is required.
+The network is trained using labeled training accounts and a specified classification loss.
+Model selection is performed without consulting final test labels, and the trained parameters
+are fixed before calibration. To isolate the contribution of relational modeling, the proposed
+predictor is compared with a feature-only classifier and a fixed-window graph baseline. Additional
+ablations remove null correction, temporal rhythm features, coordination statistics, or optional
+follow relationships. These comparisons determine whether improvements are attributable to the
+proposed temporal coordination representation rather than simply to the use of a larger model.
+Campaign-aware evaluation and leakage control:The evaluation component opera-
+tionalizes the generalization conditions defined in the problem formulation. Random account-level
+evaluation provides a reference condition, while campaign-disjoint evaluation tests whether the
+model generalizes to campaigns absent from training. Chronological evaluation restricts feature
+and edge construction to observations available before the prediction cutoff. Cross-dataset
+evaluation assesses transfer where compatible labels, attributes, and observation protocols are
+available.
+These settings are reported separately because they measure different forms of generalization.
+In transductive network evaluation, observable test-account relationships may be used only
+when they are available under the declared deployment protocol; test labels remain unavailable.
+In isolated-account evaluation, test-neighbor information is excluded and predictions rely on
+account-level features. Shared objects across partitions are not automatically leakage, but all
+cross-partition relationships must follow the declared protocol and be audited. For the primary
+campaign-disjoint inductive analysis, graph construction and message passing are restricted to
+the permitted training, calibration, or test partition; cross-partition edges are excluded. Any
+separate transductive analysis is labeled explicitly and is not used to support an independence-
+based calibration guarantee unless the required assumptions are established. Preprocessing,
+hyperparameter selection, graph-construction settings, and model selection are completed without
+using final test labels.
+Campaign-unit risk calibration:The calibration component addresses the uncertainty-
+control objective by selecting a decision parameter using a held-out calibration partition and a
+prespecified bounded loss. It operates on predictions from the fixed trained model; calibration
+accounts are not used to update the predictor. When campaigns are selected as calibration
+units, the method requires an explicit justification for treating those units as exchangeable
+under the chosen risk-control procedure. Campaign membership alone is insufficient to establish
+exchangeability.
+Let Γq(xu) denote the prediction set for accountu at parameterq. Using the nonconformity
+score s(u,c ) = 1−ˆpu,c, one possible set construction is
+Γq(xu) ={c∈{0, 1}: 1−ˆpu,c≤q}. (22)
+For this construction, increasingq expands the prediction set. Consequently, the account-level
+17
+
+PAGE 18
+miscoverage loss is non-increasing inq. For a calibration unitg, the corresponding empirical loss
+is
+Lg(q) = 1
+|g|
+∑
+u∈g
+I [yu /∈Γq(xu)]. (23)
+The calibration procedure evaluates this loss over candidate values ofq and applies the
+finite-sample correction specified by the selected conformal risk-control algorithm. Under the
+theorem’s applicable assumptions, the target is to control the marginal expected loss for a future
+exchangeable unit:
+E
+[
+LGK+1(ˆq)
+]
+≤α, (24)
+where K is the number of calibration units,GK+1 is a future unit, andαis the prespecified
+target risk. Equation 24 expresses the intended guarantee under the required assumptions; it
+is not an unconditional guarantee under arbitrary campaign shift. This loss controls marginal
+prediction-set miscoverage at the campaign-unit level, not error conditional on receiving an
+automatic singleton label. Selective accuracy is therefore reported separately, and no selective-risk
+guarantee is claimed unless a calibration method explicitly controls that loss. The number of
+independent calibration units and the smallest risk level attainable under the selected finite-
+sample correction are reported; when too few units are available, the calibration result is treated
+as underpowered or infeasible. The implementation must specify the exact calibration algorithm,
+candidate grid, correction, and infeasibility handling. If the target cannot be attained, the result
+is reported as infeasible rather than silently relaxing the target or adjusting it using test labels.
+Selective prediction and final decision:After calibration, the selected decision rule is
+applied unchanged to test accounts. The automatic-decision indicator is defined as
+Au = I
+[
+|Γˆq(xu)|= 1
+]
+. (25)
+When Au = 1, the system emits the unique class in the prediction set as the automatic
+label. When Au = 0, the system abstains and refers the account for further review. This
+includes both non-singleton and empty prediction sets; empty sets are counted as abstentions
+and as miscoverage whenever the true class is excluded. This mechanism distinguishes a unique
+prediction from an unresolved prediction instead of forcing a label for every account.
+The singleton rate measures the proportion of accounts receiving automatic labels:
+SR = 1
+N
+N∑
+u=1
+Au, (26)
+and the abstention rate is
+AR = 1−SR. (27)
+Selective accuracy is calculated only among automatically labeled accounts:
+Accsel =
+∑N
+u=1AuI[ˆyu =yu]
+∑N
+u=1Au
+, (28)
+provided that at least one account receives an automatic label. If no account receives an
+automatic label, selective accuracy is reported as undefined. The singleton rate and abstention
+18
+
+PAGE 19
+rate must be reported with selective accuracy because a model can increase selective accuracy by
+abstaining on more difficult accounts.
+Performance assessment:The final component evaluates both classification performance
+and uncertainty-aware decision behavior. Macro-F1 measures class-balanced classification quality,
+PR-AUC evaluates precision–recall discrimination, and MCC summarizes agreement between
+predicted and ground-truth classes using all confusion-matrix outcomes. The selective-prediction
+analysis additionally reports singleton rate, abstention rate, selective accuracy, prediction-set
+size, empirical coverage, and miscoverage.
+Empirical coverage is the fraction of test accounts whose true labels are contained in their
+prediction sets. It is reported separately from selective accuracy and is not presented as a formal
+guarantee unless the selected calibration theorem and its assumptions justify that interpretation.
+Similarly, a guarantee on prediction-set miscoverage does not automatically guarantee low error
+among singleton predictions. If false-discovery risk among automatic labels is an operational
+requirement, it must be defined and calibrated as a separate objective.
+The experimental evaluation compares the complete model against suitable feature-only
+and graph-based baselines and performs component ablations under the same data-partitioning
+protocols. Repeated runs, confidence intervals, and appropriate statistical comparisons are
+used to quantify uncertainty in the reported results. These experiments determine whether the
+proposed temporal coordination representation improves generalization and whether selective
+prediction provides a useful trade-off between automatic labeling and abstention.
+Algorithm 1 summarizes the complete execution flow. It partitions the data, constructs
+account representations and the null-corrected temporal graph, trains the relational predictor,
+and calibrates the decision rule using separate calibration units. The fixed model and calibrated
+rule are then applied to the final test accounts, after which automatic predictions, abstentions,
+and evaluation metrics are generated.
+6 Experimental Evaluation
+This section defines an experimental protocol to evaluate whether campaign-aware temporal
+coordination modeling improves social bot detection under distribution shift and whether selective
+predictionprovidesmorereliabledecisionswhenthetestcampaigndiffersfromthecalibrationdata.
+The evaluation is organized around eight objectives: (i) quantify the performance degradation
+caused by campaign shift; (ii) measure the contribution of temporal coordination to unseen-
+campaign detection; (iii) evaluate null-corrected co-activity modeling; (iv) assess campaign-
+unit calibration and prediction-set reliability; (v) characterize the trade-off between automatic
+prediction and abstention; (vi) test robustness to incomplete or perturbed activity observations;
+(vii) measure computational scalability; and (viii) evaluate cross-dataset transfer.
+The experiments distinguish three outcomes that should not be conflated: classification
+performance, empirical prediction-set reliability, and computational cost. High classification
+accuracy does not establish calibration, and empirical coverage on a finite collection of campaigns
+does not, by itself, establish a distribution- free guarantee for unseen campaigns.
+6.1 Research Questions and Objective Alignment
+The experiments are designed to answer the following research questions.
+19
+
+PAGE 20
+Algorithm 1Campaign-Shift-Aware Social Bot Detection
+Require: Account profilesP, eventsE, labelsY, campaign identifiersC, optional follow graph
+Gf, cutoffT, target riskα
+Ensure: Test predictions, abstention decisions, and evaluation metrics
+1: Partition data into training, calibration, and test sets
+2: Enforce campaign separation and temporal cutoffs
+3: Extract profile features and temporal rhythm representations
+4: Fit preprocessing transformations using training data only
+5: Compute multiscale temporal co-activity scores
+6: Estimate the configured time-permutation null distribution
+7: Correct edge weights and sparsify the co-activity graph
+8: Derive coordination statistics and incorporate permitted graph relations
+9: Train the relational predictor using labeled training data
+10: Fix model parameters before calibration
+11: Generate calibration predictions and compute unit-level losses
+12: Apply the selected risk-control algorithm to obtainˆq or report infeasibility
+13: Generate test predictions using the fixed predictor
+14: Construct test prediction sets usingˆq
+15: for alltest accountsu do
+16: if|Γˆq(xu)|= 1 then
+17: Emit the unique class as an automatic prediction
+18: else
+19: Abstain and refer the account for review
+20: end if
+21: end for
+22: Compute classification and selective-prediction metrics
+23: Compare baselines and ablations under each evaluation protocol
+24: Report statistical uncertainty and calibration assumptions
+• RQ1: Campaign-shift sensitivity.How substantially does social bot detection deteri-
+orate when evaluation changes from random account-level splitting to campaign-disjoint
+evaluation?
+• RQ2: Temporal coordination effectiveness.Does temporal coordination modeling
+improve detection on unseen campaigns beyond account-profile and individual activity-
+rhythm features?
+• RQ3: Null-corrected coordination.Does correcting co-activity scores against a suitable
+null model improve discrimination between coordinated automation and coincidental
+activity?
+• RQ4: Calibration under campaign shift.How do account-level, campaign-blocked,
+and other defensible calibration procedures behave when evaluated on held-out campaigns?
+• RQ5: Selective prediction.How does prediction reliability change as the system abstains
+from an increasing proportion of uncertain account predictions?
+• RQ6: Robustness. How sensitive is the proposed model to missing events, timestamp
+perturbations, low activity, and legitimate synchronized communities?
+• RQ7: Computational scalability.How do graph construction, training, inference time,
+and memory requirements scale with the number of accounts and observed interactions?
+20
+
+PAGE 21
+Table 2: Alignment between research objectives and experimental evidence.
+Objective Question Experiment Required evidence
+O1 Quantify campaign-shift degrada-
+tion
+E1 Performance difference between ran-
+dom and campaign-disjoint evalua-
+tion
+O2 Evaluate detection on unseen
+campaigns
+E2, E4 Unseen-campaign performance and
+controlled component ablations
+O3 Isolate the incremental contribu-
+tion of null-model correction
+E4, E6 Performance and graph-quality
+changes with and without null
+correction
+O4 Assess campaign-unit calibration E3 Unit-level miscoverage, calibration-
+unit count, uncertainty intervals, and
+explicit assumption checks
+O5 Quantify abstention–reliability
+trade-offs
+E3 Coverage, singleton rate, abstention,
+selective accuracy, and set size
+O6 Evaluate robustness to observa-
+tion changes
+E5 Performance and selective-prediction
+changes under controlled perturba-
+tions
+O7 Measure scalability E7 Runtime, peak memory, graph size,
+and inference throughput
+O8 Test transfer across datasets E8 Source-to-target performance and cal-
+ibration degradation
+• RQ8: Cross-datasetgeneralization. Doesthemodelretainusefuldetectionperformance
+when transferred between datasets collected under different sampling, annotation, and
+platform conditions?
+Table 2 maps these questions to the experiments and the evidence required to answer them.
+6.2 Datasets and Data Audit
+The evaluation will use publicly documented social bot detection datasets, subject to the avail-
+ability of legally accessible data, reproducible account identifiers, relevant temporal observations,
+and sufficient label provenance. Candidate datasets include Cresci-2017, Bot Repository collec-
+tions, TwiBot-20, and, where access and compatibility permit, TwiBot-22. These datasets are
+candidates for evaluation rather than an assertion that every dataset contains verified campaign
+annotations or all fields required by the proposed method.
+Table 3 specifies the information that must be verified before each dataset is included in
+the final evaluation. The values should be populated from the actual dataset files and their
+accompanying documentation.
+For each included dataset, the audit will record the number of accounts, human and bot
+labels, available events, timestamp coverage, profile-feature completeness, graph size, duplicate
+rate, missing values, and number of independent campaign or collection units. The audit will
+also document how labels were assigned and whether the collection procedure could introduce
+artifacts correlated with the target label.
+An existing dataset grouping will be treated as a campaign unit only when its provenance
+supports that interpretation. Collection batches, account creation periods, profile templates, or
+bursts of activity may be used to construct proxy groups for sensitivity analysis, but such groups
+will not be described as verified operational campaigns. Experiments using proxy groups will be
+explicitly distinguished from those using independently established campaign annotations.
+21
+
+PAGE 22
+Table 3: Dataset audit and eligibility requirements.
+Dataset Intended role Required audit
+Cresci-2017 Candidate source dataset Verify account labels, collection-group prove-
+nance, available activity fields, timestamps, du-
+plicate accounts, and the number of independent
+groups.
+Bot Repository col-
+lections
+Candidate source or auxil-
+iary dataset
+Verify the exact collection version, label defi-
+nitions, collection period, account overlap, and
+compatibility of available fields.
+TwiBot-20 Candidate source or target
+dataset
+Verify account-level labels, profile and relation
+availability, temporal coverage, collection proce-
+dures, and possible overlap with other datasets.
+TwiBot-22 Optional extended-scale or
+transfer dataset
+Verify access conditions, label provenance, times-
+tamp availability, graph construction require-
+ments, and computational feasibility.
+The final manuscript will report the exact dataset version, source, access date where applicable,
+preprocessing configuration, and resulting sample counts. No dataset will be included in a
+comparison unless the input features and evaluation labels required for that comparison are
+available and compatible.
+6.3 Data Preprocessing and Leakage Prevention
+Preprocessing is performed separately for each experimental split to prevent information from
+the calibration or test campaigns from influencing model development.
+Account identifiers are normalized to a consistent representation, and duplicate records are
+resolved using documented rules. Timestamps are converted to a consistent time representation,
+and events with invalid or unusable timestamps are handled according to a prespecified policy.
+Missing profile attributes are imputed using statistics estimated from the training partition only.
+Categorical variables are encoded using a training-fitted mapping, and numerical features are
+standardized using training-partition statistics.
+The following controls are applied throughout the experiments.
+• Duplicate control:duplicate accounts and repeated records are identified before splitting.
+Where cross-dataset account identity can be established reliably, overlapping accounts are
+either removed from the relevant transfer evaluation or explicitly handled by a predefined
+overlap policy.
+• Temporal control:a feature for an account at prediction timet may use only information
+available at or beforet. Future interactions, future profile changes, and post-cutoff graph
+edges are excluded from historical predictions.
+• Partition control:all accounts belonging to a held-out campaign remain outside predictor
+training and hyperparameter selection. Calibration and final test campaigns are also
+separated according to the selected calibration protocol.
+• Graph control:graph construction, edge filtering, feature normalization, and any data-
+dependent graph thresholds are fitted or selected using permitted training data only.
+Test-account edges must not be used to construct training representations if doing so
+exposes held-out interactions or labels.
+22
+
+PAGE 23
+• Label control:test labels are unavailable during feature design, model selection, threshold
+selection, and calibration. They are used only for the final evaluation.
+• Tuning control: all model-selection decisions are made using training and validation
+partitions. The test campaigns are not repeatedly inspected to choose hyperparameters or
+reporting thresholds.
+When a graph model requires relations involving previously unseen accounts, the evaluation
+will specify whether inference is inductive or transductive. In particular, access to unlabeled test
+topology will be reported separately from access to test labels. The same information-access
+rules will be applied to all competing methods whenever their architectures permit a comparable
+evaluation.
+6.4 Evaluation Protocols
+A central requirement of this study is to distinguish ordinary generalization from campaign,
+temporal, and dataset shift. These settings answer different scientific questions and will not be
+treated as interchangeable.
+LetC denote the set of eligible campaign or collection units. For campaign-aware experiments,
+the partition is performed over units rather than independently over accounts.
+P0: Random account-level split. Accounts are randomly divided into training, validation,
+calibration, and test partitions, subject to the dataset’s available grouping information. This
+protocol serves as a conventional reference condition. If accounts from the same campaign occur in
+multiple partitions, the resulting performance is not interpreted as evidence of unseen-campaign
+generalization.
+P1: Campaign-disjoint split. Complete campaigns or eligible collection units are assigned to
+training, validation, calibration, and test partitions. No account from a held-out test campaign
+is used to train the predictor or select its hyperparameters. This protocol is the primary test of
+campaign-disjoint generalization.
+P2: Multi-campaign holdout. Multiple campaigns are held out together to evaluate whether
+performance depends on a small number of relatively easy target campaigns. Where the dataset
+contains enough independent units, campaign holdouts are rotated across repeated group-level
+splits. Each split records the number of training, calibration, and test campaigns.
+P3: Chronological evaluation. A prespecified time cutoff separates historical training
+observations from later observations. All features for a prediction are computed using information
+available by its prediction time. When campaigns span the cutoff, the protocol reports this fact
+and does not automatically label the setting campaign-disjoint. Chronological generalization
+tests future-time shift, which is distinct from campaign-disjoint generalization.
+P4: Cross-dataset transfer. The model is trained on a source dataset and evaluated on
+a separate target dataset. Source and target features are mapped to a documented common
+representation. Features unavailable in the target dataset are not reconstructed using target
+23
+
+PAGE 24
+Table 4: Evaluation protocols and their intended interpretation.
+Protocol Partition principle Primary interpretation
+P0 Random account-level partition Conventional reference performance
+P1 Disjoint campaigns or collection units Unseen-campaign generalization
+P2 Multiple held-out campaigns Sensitivity to target-campaign composition
+P3 Historical versus future observations Temporal generalization
+P4 Source versus target dataset Cross-dataset transfer
+labels or hidden annotations. Any target-side unsupervised adaptation is reported as a separate
+setting and is not described as zero-shot transfer.
+Table 4 summarizes the role of each protocol.
+All split manifests will identify the included accounts or units, the split seed, temporal cutoff
+where applicable, and the grouping rule. The number of independent units will be reported
+alongside the number of accounts because thousands of accounts drawn from a small number of
+campaigns do not provide thousands of independent campaign-level observations.
+6.5 Compared Methods and Baselines
+The proposed method will be compared with methods representing different feature, relational,
+temporal, and uncertainty-modeling strategies. Baseline selection will depend on verified imple-
+mentation availability and input compatibility.
+Conventional account-level baselines. A support vector machine and a random forest will be
+trained using available profile and individual activity features. These baselines establish whether
+the proposed relational representation improves upon conventional account-level classification.
+Profile and rhythm baseline. A model using account-profile features and individual activity-
+rhythm features, but no co-activity graph, will isolate the contribution of coordination modeling.
+Its feature budget and classifier capacity will be kept comparable to the corresponding components
+of the proposed system where practical.
+Graph-learning baselines. GraphSAGE and graph attention networks (GAT) will be in-
+cluded when their input graphs and inductive or transductive assumptions are compatible with
+the evaluation. BotRGCN will be considered when the required relation types and features
+are available. Temporal graph methods such as TGN or TGAT will be included only when
+timestamped interactions satisfy their input requirements.
+Coordination and temporal baselines. The proposed model will be compared with a
+fixed-window binary co-activity graph and a timestamp-aware graph without null correction.
+Where a published coordination-based detector has a verifiable implementation and compatible
+inputs, it may be included as an additional baseline. Any reimplementation will be identified as
+such, with the code source, configuration, and deviations documented.
+Calibration and selective-prediction baselines. The classification model will be evaluated
+using raw predicted probabilities and a fixed decision threshold, temperature scaling, and an
+account-level split-conformal baseline where its assumptions are appropriate. Campaign-blocked
+calibration will be included when independent calibration campaigns are available. A shift-aware
+24
+
+PAGE 25
+Table 5: Comparison methods and the factors they isolate.
+Method Input or mechanism Purpose
+SVM / random forest Profile and individual activity fea-
+tures
+Conventional classification reference
+Profile–rhythm model Profile attributes and temporal ac-
+tivity summaries
+Contribution of individual temporal
+behavior
+GraphSAGE / GAT Compatible account-relational
+graph
+Contribution of relational learning
+Compatible temporal
+GNN
+Timestamped interactions or tempo-
+ral graph events
+Contribution of temporal graph
+learning
+Fixed-window co-
+activity
+Binary or fixed-window co-activity
+edges
+Reference for temporal coordination
+Group-DRO / group
+reweighting
+Group-aware training objective or
+sample weights, when meaningful
+training-group labels are available
+Tests whether group-robust training
+explains gains independently of the
+proposed graph representation
+Domain-generalization
+baseline
+A reproducible established method
+selected before final testing; exact
+implementation and configuration
+reported
+Reference for generalization across
+training groups
+Timestamp-aware graph
+without null correction
+Temporal edges without null-model
+adjustment
+Contribution of null correction
+Proposed model Profile, rhythm, null-corrected tem-
+poral coordination, and relational
+learning
+Combined representation under eval-
+uation
+Raw probabilities / tem-
+perature scaling
+Classifier scores with standard deci-
+sion or scaling rules
+Probability calibration reference
+Account-level split con-
+formal
+Account-level calibration units Calibration reference under its ap-
+plicable assumptions
+Campaign-blocked cali-
+bration / risk control
+Campaign-level calibration units
+and a specified procedure
+Assessment of campaign-unit uncer-
+tainty control
+or risk-control method will be included only when its algorithm, assumptions, and guarantees
+can be stated precisely and implemented faithfully.
+Campaign-blockedcalibrationandcampaign-levelriskcontrolarenotassumedtobeequivalent.
+Blocking observations by campaign changes the calibration sampling unit, but it does not
+automatically provide a finite-sample guarantee under arbitrary distribution shift.
+Table 5 lists the principal comparison methods.
+All baselines will use the same eligible data partitions and comparable hyperparameter-search
+budgets. A method will be marked as unavailable rather than silently replaced if its required
+features, source code, or implementation details cannot be verified.
+6.6 Implementation and Hyperparameter Selection
+The implementation will record the software versions, hardware configuration, random seeds,
+model parameter counts, graph construction settings, and training duration. The final manuscript
+will report the actual environment used rather than assuming a particular hardware platform.
+The main hyperparameters include the hidden dimension, learning rate, batch size, number
+of training epochs, dropout rate, number of relational message-passing layers, number of tem-
+poral scales, temporal decay parameters, edge-pruning threshold, and null-model configuration.
+Candidate search ranges will be established before final testing and reported in a supplementary
+table. The selected values will be determined using validation data only.
+25
+
+PAGE 26
+For the parameterized temporal kernel, the weights and time scales will satisfy
+πm≥0,
+M∑
+m=1
+πm = 1, λ m> 0. (29)
+The search procedure will enforce these constraints, for example through normalized nonnegative
+candidate weights and positive candidate time scales. Unless a differentiable graph-construction
+method is implemented, these parameters will not be described as learned end-to-end through
+the GNN.
+The null-model procedure will specify the randomization scheme, number of randomizations
+or analytical approximation, and the treatment of sparse accounts. Null-model parameters will
+be estimated without using test labels. Any graph-pruning threshold selected empirically will be
+selected on the validation partition and frozen before final evaluation.
+Each configuration will be trained with multiple independent random seeds. Hyperparameter
+selectionwillnotusefinaltestperformance. Thefinalreportwillprovidetheselectedconfiguration,
+the search space, stopping rule, and whether the results are based on a single trained model or
+an ensemble.
+6.7 Evaluation Metrics
+The metrics are divided into classification quality, probability calibration, selective prediction,
+campaign-level reliability, and computational efficiency. Each metric is computed on the same
+eligible test partition for all methods being compared.
+Classification performance. Let TP , TN, FP , and FN denote the true-positive, true-
+negative, false-positive, and false-negative counts, respectively. Macro-F1 is calculated as the
+unweighted mean of the class-specific F1 scores:
+MacroF1 = 1
+2
+( 2TP
+2TP +FP +FN + 2TN
+2TN +FP +FN
+)
+. (30)
+The implementation will use the equivalent class-wise definition with a documented zero-division
+convention for degenerate cases.
+Precision–recall area (PR-AUC), ROC-AUC, and the Matthews correlation coefficient (MCC)
+will also be reported. PR-AUC is particularly important when the bot and human classes are
+imbalanced. The false positive rate at a prespecified true positive rate will be reported where
+the score distribution supports the requested operating point. Thresholds will be selected on
+validation data, not the test set.
+Probability calibration. The Brier score evaluates the squared error between predicted
+probabilities and one-hot labels:
+Brier = 1
+N
+N∑
+u=1
+∑
+c∈{0,1}
+(ˆpu,c−I[yu =c])2. (31)
+Expected calibration error (ECE) will be computed using a fixed, documented binning rule:
+ECE =
+B∑
+b=1
+|Ib|
+N |acc(Ib)−conf(Ib)|, (32)
+26
+
+PAGE 27
+where Ib is the set of test observations in binb. The number of bins and binning strategy will be
+fixed before test evaluation. ECE will be interpreted as a descriptive calibration metric rather
+than a formal guarantee.
+Prediction-set quality. For a prediction setΓ(xu), empirical marginal coverage is
+ˆCov = 1
+N
+N∑
+u=1
+I [yu∈Γ(xu)]. (33)
+Mean prediction-set size is
+S = 1
+N
+N∑
+u=1
+|Γ(xu)|. (34)
+Coverage and set size will be reported together because a method can obtain high coverage simply
+by returning large sets. For binary classification, a set containing both labels is an ambiguous
+result, whereas a singleton set supports an automatic class decision under the specified decision
+policy.
+Selective prediction. Let
+Au = I [|Γ(xu)|= 1] (35)
+denote an automatic-decision indicator. The singleton rate and abstention rate are
+SR = 1
+N
+N∑
+u=1
+Au, AR = 1−SR. (36)
+Selective accuracy is defined only when at least one singleton prediction is produced:
+Accsel =
+∑N
+u=1Au I[ˆyu =yu]
+∑N
+u=1Au
+. (37)
+Selective Macro-F1 will also be computed over the automatically classified accounts, using a
+consistent class-label and zero-division convention. Results will report the fraction of accounts
+receiving automatic decisions so that selective accuracy cannot be interpreted without its
+associated coverage.
+Campaign-unit reliability. LetGtest denote the independent test campaigns, and letG be
+one such campaign. Its empirical miscoverage is
+ˆLG = 1
+|G|
+∑
+u∈G
+I [yu /∈Γ(xu)]. (38)
+The mean campaign-level miscoverage is
+Lcampaign = 1
+|Gtest|
+∑
+G∈Gtest
+ˆLG. (39)
+This aggregate gives each evaluated campaign equal weight; the number of independent campaigns
+and their sizes are reported alongside it.
+27
+
+PAGE 28
+6.8 Statistical Analysis and Falsification Criteria
+The following decision rules are specified before examining final test results. They are analysis
+criteria, not claims that the hypotheses have already been supported. LetMm,p denote a metric
+for methodm under protocolp.
+H1: Random-split optimism. Define ∆ shift =Mproposed,P 1−Mproposed,P 0 for Macro-F1 and
+PR-AUC, where P0 is the random account split and P1 is the campaign- or eligible-group-disjoint
+split. The direction and magnitude of the observed difference will be reported with a 95%
+confidence interval. Evidence for a degradation claim requires the interval for∆ shift to lie below
+zero; otherwise, the claim is not supported. If the group labels are only collection proxies, the
+conclusion is limited to collection-group shift.
+H2: Incremental coordination value. For the proposed model versus its strongest pre-
+specified non-coordination baseline, define∆ coord =Mproposed,P 1−Mbaseline,P 1. An improvement
+claim requires a positive 95% confidence interval for the paired difference on the primary metric,
+Macro-F1, with PR-AUC reported as a complementary metric. The null-correction contribution
+is assessed separately by comparing the same architecture with and without null correction.
+Unit of inference and tests. Where there are enough independent groups, paired differences
+are computed on the same held-out groups. The primary inferential procedure is a paired
+permutation test over group-level differences; a Wilcoxon signed-rank test is reported as a
+sensitivity analysis when its assumptions are tenable. Confidence intervals are obtained by
+resampling independent groups rather than individual accounts. With very few groups, all
+estimates are labeled low-power/descriptive and exact attainablep-value resolution is reported;
+account-level resampling is not used to manufacture a large effective sample size. For random-
+split repeats, seed-level results are summarized separately and are not treated as independent
+campaigns.
+Multiplicity. Macro-F1 under P1 is the primary endpoint for the principal proposed-model
+comparison. Other protocol–metric–baseline comparisons are secondary. Within each prespecified
+family of secondary hypotheses,p-values are adjusted using the Holm procedure. Both adjusted
+and unadjusted values, effect sizes, confidence intervals, number of groups, and group sizes are
+reported. Missing or undefined metric values are not imputed as favorable results.
+Calibration and class-conditional reliability. Marginal coverage and campaign-level mis-
+coverage are reported alongside class-conditional coverage for the human and bot classes, where
+sample sizes permit. A Mondrian/class-conditional calibration variant may be included as a sepa-
+rate method, but it is not assumed to provide a useful finite-sample guarantee when class-specific
+calibration counts are small. For each calibration condition, the number of independent unitsK
+and the minimum attainable risk level implied by the implemented finite-sample correction are
+reported. If the targetαis unattainable for the observedK, the formal risk-control result is
+marked infeasible and the empirical calibration analysis is retained without a guarantee.
+28
+
+PAGE 29
+7 Conclusion
+This paper presents a campaign-shift-aware framework for social bot detection that integrates
+temporal coordination modeling, null-model correction, graph neural networks, and uncertainty-
+aware selective prediction. The proposed evaluation methodology examines generalization to
+unseen campaigns, prediction reliability, and the trade-off between automatic classification
+and human review. Campaign-disjoint, chronological, and cross-dataset experiments, together
+with controlled ablations, are required to establish the contribution of each component. The
+present manuscript defines a testable methodology; it does not claim empirical superiority before
+the experiments are executed. Campaign-level risk control is treated as empirical unless the
+calibration-unit assumptions and finite-sample requirements are verified. The next step is to
+execute the P0–P1 comparison and core ablations on audited datasets, report independent-group
+counts and uncertainty, and evaluate robustness and scalability.
+References
+[1] S. Cresci, “A decade of social bot detection,”Communications of the ACM, vol. 63, no. 10,
+pp. 72–83, 2020.
+[2] S. Feng, H. Wan, N. Wang, J. Li, and M. Luo, “TwiBot-20: A comprehensive Twitter bot de-
+tectionbenchmark,” inProceedings of the 30th ACM International Conference on Information
+and Knowledge Management (CIKM), 2021, pp. 4485–4494, doi: 10.1145/3459637.3482019.
+[3] S. Feng, H. Wan, N. Wang, J. Li, and M. Luo, “SATAR: A self-supervised approach to
+Twitter account representation learning and its application in bot detection,” inProceedings
+of the 30th ACM International Conference on Information and Knowledge Management
+(CIKM), 2021.
+[4] N. Chavoshi, H. Hamooni, and A. Mueen, “On-demand bot detection and archival system,”
+in Proceedings of the 26th International Conference on World Wide Web Companion, 2017,
+pp. 183–187, doi: 10.1145/3041021.3054733.
+[5] T. Khaund, B. Kirdemir, N. Agarwal, H. Liu, and F. Morstatter, “Social bots and their
+coordination during online campaigns: A survey,”IEEE Transactions on Computational
+Social Systems, vol. 9, no. 2, pp. 530–545, 2022, doi: 10.1109/TCSS.2021.3103515.
+[6] S. Feng, H. Wan, N. Wang, and M. Luo, “BotRGCN: Twitter bot detection with rela-
+tional graph convolutional networks,” inProceedings of the 2021 IEEE/ACM International
+Conference on Advances in Social Networks Analysis and Mining (ASONAM), 2021.
+[7] S. Feng, Z. Tan, R. Li, and M. Luo, “Heterogeneity-aware Twitter bot detection with rela-
+tional graph transformers,” inProceedings of the AAAI Conference on Artificial Intelligence,
+vol. 36, no. 4, pp. 3977–3985, 2022, doi: 10.1609/aaai.v36i4.20314.
+[8] S. Feng et al., “TwiBot-22: Towards graph-based Twitter bot detection,” inAdvances in
+Neural Information Processing Systems, vol. 35, Datasets and Benchmarks Track, 2022.
+[9] B. He, Y. Yang, Q. Wu, H. Liu, R. Yang, H. Peng, X. Wang, Y. Liao, and P. Zhou,
+“Dynamicity-aware social bot detection with dynamic graph transformers,” inProceedings of
+29
+
+PAGE 30
+the Thirty-Third International Joint Conference on Artificial Intelligence (IJCAI), 2024, pp.
+5844–5852, doi: 10.24963/ijcai.2024/646.
+[10] F. Liu and R. Ma, “From the past to the present: A social bot detection method based
+on spatio-temporal interactive perception,”Knowledge-Based Systems, vol. 322, Art. no.
+113712, 2025, doi: 10.1016/j.knosys.2025.113712.
+[11] A.N.AngelopoulosandS.Bates, “Conformalprediction: Agentleintroduction,” Foundations
+and Trends in Machine Learning, vol. 16, no. 4, pp. 494–591, 2023.
+[12] A. N. Angelopoulos, S. Bates, A. Fisch, L. Lei, and T. Schuster, “Conformal risk control,”
+in Proceedings of the International Conference on Learning Representations (ICLR), 2024.
+[13] D. Pacheco, A. Hui, C. Torres-Lugo, B. Truong, A. Flammini, and F. Menczer, "Uncovering
+coordinated networks on social media: Methods and case studies," inProceedings of the
+International AAAI Conference on Web and Social Media, 2021.
+[14] S. Sagawa, P. W. Koh, T. B. Hashimoto, and P. Liang, "Distributionally robust neural
+networks for group shifts: On the importance of regularization for worst-case generalization,"
+in International Conference on Learning Representations, 2020.
+[15] I. Gulrajani and D. Lopez-Paz, "In search of lost domain generalization," inInternational
+Conference on Learning Representations, 2021.
+[16] R. J. Tibshirani, R. Foygel Barber, E. Candes, and A. Ramdas, "Conformal prediction under
+covariate shift," inAdvances in Neural Information Processing Systems, vol. 32, 2019.
+[17] R. F. Barber, E. J. Candes, A. Ramdas, and R. J. Tibshirani, "Conformal prediction beyond
+exchangeability,"The Annals of Statistics, vol. 51, no. 2, pp. 816–845, 2023.
+30

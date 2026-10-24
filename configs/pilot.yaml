@@ -1,0 +1,11 @@
+inherits: default.yaml
+seeds: [11, 23, 37]
+protocols: [P0, P1, P2, P3]
+bootstrap_repeats: 150
+graph:
+  null_permutations: 8
+  object_event_cap: 64
+training:
+  rf_trees: 80
+  epochs: 50
+  patience: 8

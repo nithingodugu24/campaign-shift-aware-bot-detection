@@ -1,0 +1,5 @@
+component,seconds,peak_rss_mb,incremental_peak_rss_mb,memory_method,accounts,events,dataset,data_kind,group_type,protocol,seed,split_id,partition,model,variant,train_accounts,calibration_groups,batch_size,condition,subset_size,target_dataset
+cross_dataset_inference,0.0256606000002648,436.5859375,0.13671875,process RSS sampled every 10ms; absolute peak includes prior stages,,,cresci2017_pilot,real,proxy_collection,P4,11,P4_s11,,RF,,,,2483.0,,,gilani-2017_snapshots
+cross_dataset_inference,0.0254783999998835,436.4921875,0.01953125,process RSS sampled every 10ms; absolute peak includes prior stages,,,cresci2017_pilot,real,proxy_collection,P4,11,P4_s11,,SVM,,,,2483.0,,,gilani-2017_snapshots
+cross_dataset_inference,0.0015051999998831,436.4921875,0.01953125,process RSS sampled every 10ms; absolute peak includes prior stages,,,cresci2017_pilot,real,proxy_collection,P4,11,P4_s11,,LR,,,,2483.0,,,gilani-2017_snapshots
+cross_dataset_inference,0.0034577999995235,438.1171875,1.64453125,process RSS sampled every 10ms; absolute peak includes prior stages,,,cresci2017_pilot,real,proxy_collection,P4,11,P4_s11,,A1_profile,,,,2483.0,,,gilani-2017_snapshots

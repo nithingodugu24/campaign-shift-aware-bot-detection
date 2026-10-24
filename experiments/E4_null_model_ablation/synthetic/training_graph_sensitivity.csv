@@ -1,0 +1,2 @@
+accounts,object_event_records,selection,protocol,raw_pair_union,raw_mean_absolute_difference,raw_correlation,retained_edge_jaccard,pilot_retained_edges,reference_retained_edges,pilot_seconds,reference_seconds,interpretation
+128,2974,fixed hash order within training partition only; max 128 accounts,P1,127,0.0,1.0,0.8421052631578947,55,50,1.04825400000027,1.9441028999999617,"Exploratory sensitivity to cap and Monte Carlo budget combined; not a p-value, test-set tuning or proof of approximation accuracy at full scale"

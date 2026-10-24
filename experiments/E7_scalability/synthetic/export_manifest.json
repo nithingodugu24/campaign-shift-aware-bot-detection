@@ -1,0 +1,17 @@
+{
+  "experiment": "E7",
+  "study": "synthetic",
+  "canonical_source": "results/synthetic",
+  "source_sha256": {
+    "metrics.csv": "0918e61f9f0994f6345c1f28f90bbe87870e00de5ec56c94a6afd22beadfda00",
+    "group_metrics.csv": "46c749304dc2d92b4c6686568c5f1a1a6d320634a58ebd675686f61f5f31da78",
+    "runtime.csv": "a99bf17375b869390a5f4bc35fe5696fdac786a4a614fa0cb5dfd9664567edba",
+    "graph_statistics.csv": "be861523c6d8b6aac6d3f94ae7cdca26d8b58f48dbbcd82c109c69144276bb8e"
+  },
+  "exported_row_counts": {
+    "metrics.csv": 0,
+    "group_metrics.csv": 0,
+    "runtime.csv": 36,
+    "graph_statistics.csv": 54
+  }
+}

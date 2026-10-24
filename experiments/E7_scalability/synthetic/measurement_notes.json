@@ -1,0 +1,6 @@
+{
+  "mode": "One experiment worker at a time for this dedicated E7 pass",
+  "scope": "Desktop background activity uncontrolled; whole-process RSS includes libraries and previous stages",
+  "warmup": "No workloads excluded; import time outside stage measurements",
+  "training_timing": "Main E1-E5 model timings were collected while other experiment workers could run; use dedicated E7 component timings for scalability comparisons"
+}

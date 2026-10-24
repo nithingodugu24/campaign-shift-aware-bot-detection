@@ -1,0 +1,14 @@
+experiment,status,reason,dataset,data_kind,group_type,protocol,seed,split_id,model,status_scope
+E8,unsupported_model,Target has profile snapshots only; rhythm and coordination inputs unavailable,,,,,,,GraphSAGE,this_experiment
+E8,unsupported_model,Target has profile snapshots only; rhythm and coordination inputs unavailable,,,,,,,GroupDRO,this_experiment
+E8,unsupported_model,Target has profile snapshots only; rhythm and coordination inputs unavailable,,,,,,,GroupReweight,this_experiment
+E8,unsupported_model,Target has profile snapshots only; rhythm and coordination inputs unavailable,,,,,,,A2_rhythm,this_experiment
+E8,unsupported_model,Target has profile snapshots only; rhythm and coordination inputs unavailable,,,,,,,A3_static,this_experiment
+E8,unsupported_model,Target has profile snapshots only; rhythm and coordination inputs unavailable,,,,,,,A4_temporal,this_experiment
+E8,unsupported_model,Target has profile snapshots only; rhythm and coordination inputs unavailable,,,,,,,Proposed,this_experiment
+E8,executed,"Direct transfer to cresci-rtbust-2019_snapshots, 693 accounts; removed 0 overlapping source IDs",,,,,,,,this_experiment
+baseline,not_reproduced,Official multimodal encoders and full required relational inputs not reproduced,,,,,,,BotRGCN,baseline_availability
+baseline,not_reproduced,Official heterogeneous transformer not reproduced,,,,,,,RGT,baseline_availability
+baseline,not_reproduced,Shared-object observations are not assumed equivalent to verified temporal interaction edges,,,,,,,TGN/TGAT,baseline_availability
+baseline,not_reproduced,Official dynamic/hypergraph preprocessing and checkpoints not reproduced,,,,,,,BotDGT/BotSTIP,baseline_availability
+baseline,not_reproduced,Not reproduced; GroupDRO and group reweighting supplied as explicitly named alternatives,,,,,,,IRM,baseline_availability

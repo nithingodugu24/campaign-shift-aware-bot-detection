@@ -1,0 +1,9 @@
+[project]
+name = "campaign-shift-bot-detection"
+version = "1.0.0"
+description = "Auditable temporal coordination and campaign-unit selective prediction experiments"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

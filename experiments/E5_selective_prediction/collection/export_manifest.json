@@ -1,0 +1,17 @@
+{
+  "experiment": "E5",
+  "study": "collection",
+  "canonical_source": "results/collection",
+  "source_sha256": {
+    "metrics.csv": "36460ace269e0363735262ed23d22b2d949784bb3fa2c78194c7577b16932a84",
+    "group_metrics.csv": "b85950f43d037b5a436eba89563e468e782cb2df647899c30a9d83a06394b021",
+    "selective_curves.csv": "7c58c7ff0399a9868b298bc8a9b784d6a8902a43719763bf276a9184ca70af9e",
+    "calibration.csv": "1d92b56dbb31945faaad2e857f2e154f2d551c4cf7edc5328b67a7a1684e06c6"
+  },
+  "exported_row_counts": {
+    "metrics.csv": 0,
+    "group_metrics.csv": 0,
+    "selective_curves.csv": 243,
+    "calibration.csv": 54
+  }
+}

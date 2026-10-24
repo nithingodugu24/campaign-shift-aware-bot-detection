@@ -1,0 +1,4 @@
+comparison,paired_units,mean_difference,p_value,interpretation,holm_p_value
+Proposed minus A2_rhythm,5,0.012435149316020858,0.875,Exploratory group-averaged paired Wilcoxon; overlapping training sets and proxy-group dependence limit inference,1.0
+Proposed minus A4_temporal,5,-0.00703732846259022,0.75,Exploratory group-averaged paired Wilcoxon; overlapping training sets and proxy-group dependence limit inference,1.0
+Proposed minus GraphSAGE,5,-0.00899655318327297,0.625,Exploratory group-averaged paired Wilcoxon; overlapping training sets and proxy-group dependence limit inference,1.0

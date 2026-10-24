@@ -1,0 +1,40 @@
+{
+  "source": {
+    "name": "cresci2017_pilot",
+    "data_kind": "real",
+    "group_type": "proxy_collection",
+    "chronology_supported": false,
+    "source": "https://botometer.osome.iu.edu/bot-repository/datasets/cresci-2017/cresci-2017.csv.zip",
+    "citation": "Cresci et al. The paradigm-shift of social spambots. WWW Companion 2017; Cresci et al. Fame for sale. Decision Support Systems 2015.",
+    "license": "Research purposes only; original DATA_LICENSE.txt retained",
+    "retrieved_utc": "2026-10-19T03:48:08.822454+00:00",
+    "archive_sha256": "f80ad99dce3be884c88f1e544a7ff418b8220b444f2ecff26f7dc84317f11c3e",
+    "sample_seed": 2026,
+    "accounts_per_collection_cap": 120,
+    "tweets_per_account_cap": 40,
+    "group_definition": "Original archive collection category, not independently verified campaigns",
+    "source_universe_ids": "source_universe_ids.csv",
+    "collection_family": "Cresci overlapping research collections",
+    "limitations": "Bounded pilot, not full benchmark. First available tweets per selected account in archive order; snapshot timing unverified, so chronological evaluation unsupported. Cresci-2015 and Cresci-2017 share underlying accounts/collections; transfer is a sensitivity analysis, not independent external validation."
+  },
+  "target": {
+    "name": "gilani-2017_snapshots",
+    "data_kind": "real",
+    "group_type": "unavailable",
+    "chronology_supported": false,
+    "source": "https://botometer.osome.iu.edu/bot-repository/datasets/gilani-2017/gilani-2017.tar.gz",
+    "license": "Bot Repository academic research use; see https://botometer.osome.iu.edu/bot-repository/datasets.html",
+    "citation": "Gilani et al. Of bots and humans (on Twitter). ASONAM 2017.",
+    "archive_sha256": "98ce982074b4e611c58f6aa88bedbaaeca0aff9ecbe95e017f1be99e48af60ea",
+    "label_mapping": {
+      "human": 0,
+      "bot": 1
+    },
+    "limitations": "Only user snapshots and a record timestamp are supplied. No tweet IDs, objects or event histories; temporal and graph transfer is unsupported. No campaign annotations."
+  },
+  "removed_overlapping_accounts": 1,
+  "feature_mapping": "Same canonical numeric profile fields; same rhythm and shared-object definitions. Missing target fields use source-fitted imputer.",
+  "target_label_tuning": false,
+  "target_calibration": false,
+  "limitation": "Dataset-specific annotation and collection differences confound transfer; inspect feature missingness audits"
+}

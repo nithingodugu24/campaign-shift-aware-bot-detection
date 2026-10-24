@@ -1,0 +1,38 @@
+seeds: [11, 23, 37]
+protocols: [P0, P1, P2, P3]
+primary_protocol: P1
+primary_metric: macro_f1
+alpha: 0.10
+bootstrap_repeats: 300
+models: [RF, SVM, LR, GraphSAGE, GroupDRO, GroupReweight, A1_profile, A2_rhythm, A3_static, A4_temporal, A5_corrected, Proposed]
+graph:
+  window_seconds: 3600
+  scales_seconds: [10, 60, 600]
+  scale_weights: [0.4, 0.35, 0.25]
+  null_permutations: 16
+  null_block_seconds: 86400
+  object_event_cap: 96
+  minimum_null_std: 0.01
+  minimum_shared_objects: 2
+  minimum_weight: 1.0
+  epsilon: 0.001
+  top_k: 10
+training:
+  threads: 2
+  rf_trees: 100
+  classical_grid: [4, 12]
+  learning_rates: [0.003, 0.01]
+  hidden_dim: 32
+  dropout: 0.15
+  weight_decay: 0.01
+  epochs: 80
+  patience: 12
+  dro_eta: 0.05
+robustness:
+  remove_fractions: [0.25, 0.5, 0.75]
+  jitter_seconds: [30, 300, 900]
+  low_activity_quantile: 0.25
+  group_size_bins: [10, 30]
+scalability_sizes: [128, 256, 512]
+selective_alphas: [0.05, 0.1, 0.2, 0.3]
+selective_thresholds: [0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99]

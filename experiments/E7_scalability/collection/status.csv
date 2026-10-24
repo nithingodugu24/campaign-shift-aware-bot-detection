@@ -1,0 +1,7 @@
+experiment,status,reason,dataset,data_kind,group_type,protocol,seed,split_id,model,status_scope
+baseline,not_reproduced,Official multimodal encoders and full required relational inputs not reproduced,,,,,,,BotRGCN,baseline_availability
+baseline,not_reproduced,Official heterogeneous transformer not reproduced,,,,,,,RGT,baseline_availability
+baseline,not_reproduced,Shared-object observations are not assumed equivalent to verified temporal interaction edges,,,,,,,TGN/TGAT,baseline_availability
+baseline,not_reproduced,Official dynamic/hypergraph preprocessing and checkpoints not reproduced,,,,,,,BotDGT/BotSTIP,baseline_availability
+baseline,not_reproduced,Not reproduced; GroupDRO and group reweighting supplied as explicitly named alternatives,,,,,,,IRM,baseline_availability
+E7,executed,Measured CPU process RSS and time at increasing account counts; no warm-up workloads excluded,,,,,,,,this_experiment

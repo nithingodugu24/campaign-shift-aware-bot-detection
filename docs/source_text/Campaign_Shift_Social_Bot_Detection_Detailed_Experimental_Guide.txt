@@ -1,0 +1,645 @@
+DETAILED EXPERIMENTALIMPLEMENTATION GUIDE
+Campaign-Shift-Aware Social Bot Detection with Temporal Coordination Modeling and Selective Prediction
+Student-facing guide for dataset preparation, baseline implementation, experiments E1–E8, evaluation, and reportingPrepared to support implementation of the paper's experimental protocol
+
+How to use this document
+This guide translates the paper's experimental plan into a practical implementation workflow. It explains what data are needed, what each experiment tests, which methods should be compared, how to run the experiment, which metrics to calculate, and what files and tables to submit.
+Important: this is an implementation protocol, not a results document. Do not invent, estimate, or copy numbers into result tables. Fill every result only after running the corresponding experiment. If a dataset does not contain a required field or a baseline cannot be reproduced, document that limitation and discuss it with the supervisor.
+Project objective
+Test whether a social bot detector that models temporal coordination and uses campaign-aware selective prediction is more reliable under campaign shift than conventional account-feature, graph-based, and confidence-calibration baselines.
+Research questions
+RQ1: Does performance measured with random account splits overestimate performance on unseen campaigns or later time periods?
+RQ2: Does temporal coordination modeling add value beyond account profiles and static graph structure?
+RQ3: Does null-model correction reduce spurious coordination links caused by activity level or chance co-activity?
+RQ4: Does campaign-aware calibration improve the reliability of prediction sets or abstention decisions at group level?
+RQ5: What accuracy–coverage trade-off is obtained when the detector can abstain on uncertain cases?
+RQ6: How robust is the approach to missing events, timestamp perturbations, benign synchronization, and dataset changes?
+RQ7: What are the computational costs of graph construction, null estimation, training, calibration, and inference?
+1. What must be implemented
+Component
+Implementation requirement
+Evidence/output
+Dataset pipeline
+Load raw data; audit labels, timestamps, account IDs, edges/interactions, and group/campaign metadata; clean and document exclusions.
+Dataset audit CSV and reproducible preprocessing script.
+Feature pipeline
+Create profile features and activity-rhythm features using training-only fitting where applicable.
+Feature schema, feature-generation code, missingness report.
+Coordination graph
+Build temporal co-activity/interactions using a predeclared window; apply the paper's null correction and sparsification consistently.
+Graph construction script, edge statistics, ablation variants.
+Detection models
+Implement or reproduce agreed baselines and the proposed full model.
+Training scripts, checkpoints, prediction files.
+Calibration/selective prediction
+Fit calibrators on designated calibration groups only; define prediction/abstention rule before test evaluation.
+Calibration script and per-account/per-group outputs.
+Evaluation
+Run P0–P4 where data support them and experiments E1–E8.
+Metrics CSVs, figures, confidence intervals, experiment log.
+Reproducibility
+Fix seeds, save configuration, log versions, and avoid test-set tuning.
+README, environment file, config files, run logs.
+
+2. Dataset selection and audit
+Candidate datasets from the paper's scope include Cresci-2017, TwiBot-20, and TwiBot-22. Choose datasets only after checking whether their labels, timestamps, graph structure, and collection/group metadata support the planned experiments. Dataset names alone do not guarantee that verified campaign labels or full event histories are available.
+Field/data property
+Why it is needed
+What the student must check
+Account ID
+Connects account features, labels, graph nodes, and predictions.
+Unique IDs; duplicate handling; stable mapping across files.
+Bot/human label
+Supervised training and evaluation.
+Label definitions, class balance, unknown/ambiguous labels, label provenance.
+Timestamped events
+Builds rhythm and temporal coordination features.
+Timezone, timestamp format, coverage period, missingness, duplicate events.
+Interactions/edges
+Supports graph-based baselines and temporal graph construction.
+Edge types, direction, timestamps, availability of source/target IDs.
+Campaign/group IDs
+Needed for campaign-disjoint evaluation and group-level reliability analysis.
+Whether labels are verified, externally annotated, or inferred. Record the distinction.
+Profile/content features
+Supports RF/SVM and profile encoder.
+Feature availability, missing values, privacy restrictions, leakage risks.
+Dataset documentation/license
+Ensures lawful and reproducible use.
+Citation, license, access requirements, permitted use.
+
+2.1 Dataset audit checklist
+Record dataset name, version, download date, citation, license, and original source.
+Count accounts, labels by class, events, edges, groups, and timestamps.
+Report missing-value percentages and duplicate rows/events.
+Check for overlapping account IDs across train/validation/calibration/test splits.
+Check whether labels, group identifiers, or features were created using future information.
+Record whether group/campaign labels are verified or inferred.
+Do not call a connected component or inferred community a verified campaign unless evidence supports that description.
+Freeze and save the cleaned dataset manifest before training models.
+3. Data leakage prevention and split protocols
+The paper's central claim concerns campaign shift. Therefore, split design is part of the scientific contribution, not a minor implementation detail. Every comparison must use the same eligible accounts and split definitions wherever possible.
+Protocol
+Construction
+Main purpose
+Caution
+P0: Random account split
+Randomly split accounts into train/validation/calibration/test using a fixed seed; preserve class balance where feasible.
+Conventional reference benchmark.
+Related accounts/events can leak across splits; do not treat as the main evidence of shift robustness.
+P1: Campaign/group-disjoint
+Assign whole verified campaigns/groups to one split only. No group may appear in more than one split.
+Tests generalization to unseen groups.
+If verified campaign labels are unavailable, state that the groups are proxies/inferred.
+P2: Repeated group holdout
+Repeat group-disjoint evaluation over several independently chosen held-out group sets.
+Measures variability across held-out groups.
+Independent unit is the group/campaign, not each random seed alone.
+P3: Chronological
+Train on earlier data; validate/calibrate on later but non-overlapping periods; test on the latest period.
+Tests temporal drift.
+Features must use only information available at prediction time.
+P4: Cross-dataset
+Train and tune on source dataset; evaluate on a compatible target dataset without target-label tuning.
+Tests external generalization.
+Align label definitions and feature availability; disclose all incompatibilities.
+
+3.1 Split rules
+Create splits before fitting scalers, imputers, feature selectors, graph thresholds, or calibration models.
+Fit data-dependent preprocessing on training data only; apply the fitted transformation to validation/calibration/test.
+Use validation data for model selection and calibration data for calibrator fitting. Keep the test set untouched until final evaluation.
+If the proposed method uses group-level calibration, keep entire groups in the calibration partition and follow the method's exact requirements.
+Save the IDs assigned to each partition so every baseline uses the same split.
+Report class distribution and number of groups in every split.
+Run multiple seeds or repeated group holdouts where feasible; do not claim that seeds create additional independent campaigns.
+4. Methods to compare
+4.1 Detection baselines
+Method
+Role in comparison
+Implementation notes
+Random Forest (RF)
+Classical account-feature baseline.
+Use identical profile features available to the proposed model; tune hyperparameters on validation only.
+Support Vector Machine (SVM)
+Classical margin-based baseline.
+Scale numerical features using training-only statistics; handle class imbalance transparently.
+GraphSAGE
+Neighborhood aggregation baseline.
+Use the same eligible graph/split; document whether graph is static and what node features are provided.
+BotRGCN
+Heterogeneous-graph bot-detection baseline.
+Use only if the dataset has compatible node/edge/features and the implementation can be reproduced.
+Relational Graph Transformer (RGT)
+Graph/relational architecture baseline.
+Include only if relation types and computational resources support a fair implementation.
+TGN or TGAT
+Temporal graph learning baseline.
+Use timestamps and temporal interaction records; do not compare on a richer input without disclosing it.
+BotDGT
+Dynamic-graph transformer comparison.
+Check official code, dataset compatibility, and required preprocessing before committing.
+BotSTIP
+Spatio-temporal/hypergraph comparison.
+Include if the paper's data and public implementation support a faithful reproduction.
+Proposed full model
+Evaluates all proposed components together.
+Use the same split and evaluation metrics as compatible baselines.
+
+Recommended core set when resources are limited: RF, SVM, GraphSAGE, BotRGCN, and the proposed full model. Add TGN/TGAT, BotDGT, BotSTIP, or RGT only when data compatibility and implementation time permit. Do not claim exact reproduction when you use a modified implementation.
+4.2 Ablation variants
+Variant
+What is removed/changed
+Question answered
+A1 Profile-only
+Profile features only.
+How much can conventional account features explain?
+A2 Profile + rhythm
+Add activity-rhythm representation.
+Does behavioral timing add value?
+A3 Profile + static graph
+Add static graph without temporal coordination.
+Is graph structure enough?
+A4 Profile + temporal graph
+Add temporal interactions without null correction.
+Does temporal structure add value?
+A5 Temporal graph + null correction
+Apply the proposed null-model correction.
+Does correction remove chance/activity-driven links?
+A6 Full detector without campaign-aware calibration
+Keep detector, replace proposed reliability layer with standard decisions.
+Does campaign-aware calibration improve reliability?
+A7 Full proposed model
+All proposed modules enabled.
+Overall proposed method.
+
+4.3 Calibration/selective-prediction baselines
+Method
+Purpose
+Key rule
+Maximum-softmax confidence threshold
+Simple abstention baseline.
+Predict only if confidence exceeds a threshold selected on validation data.
+Temperature scaling + threshold
+Tests probability calibration plus abstention.
+Fit temperature on held-out validation/calibration data; do not fit on test.
+Account-level split conformal
+Standard conformal reference.
+Use a separate calibration set and the exact conformal score/quantile rule.
+Campaign/group-blocked conformal
+Respects group partitioning in calibration.
+Calibration units and quantile construction must match the method's stated assumptions.
+Proposed campaign-unit calibration
+Evaluates the paper's method.
+Implement exactly as specified in the paper and report all assumptions and failure cases.
+
+Formal coverage guarantees depend on the exact method and assumptions. Do not state that arbitrary campaign shift is covered by a standard conformal method unless the theorem and assumptions actually justify it. Report empirical coverage separately from theoretical guarantees.
+5. Metrics and reporting rules
+Metric
+Use
+Interpretation/caution
+Macro-F1
+Detection quality across classes.
+Treats classes equally; report class-wise scores as well.
+PR-AUC / Average Precision
+Especially informative under class imbalance.
+Specify the positive class and exact implementation.
+ROC-AUC
+Ranking discrimination.
+Can appear strong under severe imbalance; do not use alone.
+MCC
+Balanced summary from confusion matrix.
+Report the convention for undefined values.
+False-positive rate (FPR)
+Benign accounts incorrectly flagged as bots.
+Report absolute value and, where relevant, per group.
+Brier score / log loss
+Probability quality.
+Use when calibrated probabilities are meaningful and labels are available.
+Expected calibration error (ECE)
+Calibration diagnostic.
+Specify binning scheme; ECE depends on bin choices.
+Empirical coverage
+Fraction of examples whose prediction set contains the true label.
+A test-set empirical value is not automatically a formal guarantee.
+Group-level miscoverage
+Per-group fraction of examples not covered.
+Report distribution across groups, not just pooled mean.
+Mean prediction-set size
+Size of returned label sets.
+Smaller is often more decisive, but must be interpreted with coverage.
+Singleton rate / coverage
+Fraction receiving one-label prediction.
+Clarify whether the singleton rate denominator is all test examples.
+Abstention rate
+Fraction withheld from automatic prediction.
+Report alongside selective accuracy and coverage.
+Selective accuracy
+Accuracy on non-abstained examples.
+High accuracy can be achieved by abstaining on most cases; always report coverage.
+Runtime and memory
+Scalability.
+Measure graph building, null estimation, training, calibration, and inference separately.
+
+5.1 Statistical reporting
+Report mean and standard deviation across repeated runs, where runs are appropriate.
+For independent group/campaign comparisons, use the group as the statistical unit where justified.
+Use paired comparisons when methods are evaluated on the same groups/splits.
+Report confidence intervals and the number of independent groups supporting them.
+Avoid treating accounts within one campaign as independent evidence of generalization to new campaigns.
+Predefine the primary metric and primary split before inspecting final test results.
+Keep full metric tables, not only the best scores, and disclose failed runs or exclusions.
+6. Experiment E1 — Random versus campaign-shift evaluation
+Objective
+Determine whether conventional random account splitting gives an overly optimistic estimate of performance compared with evaluation on unseen groups/campaigns or later periods.
+Methods
+RF, SVM, GraphSAGE, BotRGCN, and the proposed detector. Use the same split definitions for all compatible methods.
+Procedure
+Prepare P0 random, P1 group-disjoint, and P3 chronological splits if the data supports them.
+Train each method on the training partition and select settings using validation data.
+Fit calibration only on the designated calibration partition if the method requires calibration.
+Evaluate once on the test partition for each protocol.
+Repeat with multiple seeds and/or repeated group holdouts where feasible.
+Calculate Macro-F1, PR-AUC, ROC-AUC, MCC, and FPR.
+Calculate the performance drop from P0 to P1/P3 for each method and show uncertainty.
+Required outputs
+Table: each model × split protocol × metric.
+Figure: performance by split protocol with uncertainty bars.
+Figure/table: random-to-group-disjoint performance change.
+Short interpretation: which methods degrade most, and whether the proposed method reduces the degradation.
+Do not assume that campaign shift exists or that your model solves it. Establish the effect empirically; if the result is weak or inconsistent, report that honestly.
+7. Experiment E2 — Contribution of temporal coordination
+Objective
+Test whether temporal co-activity/coordination features improve detection beyond account profiles and static graph structure.
+Variants
+A1 profile-only; A2 profile + rhythm; A3 profile + static graph; A4 profile + temporal graph; A7 full model. Compare BotDGT/BotSTIP or TGN/TGAT where reproducible and compatible.
+Procedure
+Freeze the split protocol, preferably including P1 and P3.
+Use the same train/validation/test IDs for every ablation.
+Hold optimization budget and model-selection policy as consistent as possible.
+Train each variant and evaluate Macro-F1, PR-AUC, ROC-AUC, MCC, and FPR.
+Compare the full model with each reduced variant and calculate absolute changes in the primary metrics.
+Inspect performance by group to see whether temporal features help broadly or only in a few groups.
+Required outputs
+Ablation table with all variants and metrics.
+Bar chart or dot plot showing metric differences relative to profile-only.
+Description of the exact temporal features and interaction records used.
+Caution: temporal models may have more parameters and richer inputs than classical baselines. Disclose input differences and provide fair ablation comparisons.
+8. Experiment E3 — Campaign-aware calibration and group reliability
+Objective
+Evaluate whether calibration that respects campaign/group structure produces more reliable predictions than ordinary confidence thresholding or account-level calibration.
+Methods
+Maximum-softmax threshold; temperature scaling plus threshold; account-level split conformal; campaign/group-blocked calibration; proposed campaign-unit calibration.
+Procedure
+Choose the detector and freeze its trained parameters before fitting calibration methods.
+Partition calibration groups separately from training and test groups.
+Fit each calibrator using only its designated calibration data.
+Specify target coverage/error level and calibration score before running test evaluation.
+Evaluate pooled empirical coverage, mean prediction-set size, singleton rate, and group-level miscoverage.
+Report the distribution of per-group miscoverage (e.g., median, interquartile range, and worst observed group) when the number of groups supports it.
+Repeat group holdouts where feasible and report uncertainty.
+Required outputs
+Calibration table with coverage, group miscoverage, mean set size, and singleton rate.
+Reliability plot or group-wise miscoverage plot.
+Statement of each method's assumptions and whether those assumptions are plausible in the experiment.
+A method's observed coverage on one test set is empirical evidence, not by itself a universal or distribution-free guarantee under campaign shift.
+9. Experiment E4 — Null-model correction and graph ablation
+Objective
+Test whether the proposed null-model correction prevents chance co-activity or high activity volume from producing misleading coordination edges.
+Variants
+No graph; static/shared-object graph; temporal graph without null correction; temporal graph with null correction; corrected graph with the proposed filtering/sparsification.
+Procedure
+Use identical account sets, time windows, and train/test partitions.
+Record graph nodes, edges, density, degree distribution, and edge-weight distribution for each variant.
+Apply null correction using only the information permitted by the paper's definition; avoid test-label information.
+Train the same downstream detector for each graph variant.
+Evaluate detection metrics and computational overhead.
+Check whether correction disproportionately removes edges from high-activity accounts or specific groups.
+Required outputs
+Graph statistics table before and after correction.
+Detection ablation table.
+Runtime comparison for graph construction and null estimation.
+Example visualizations of graph structure, only if they can be produced without exposing private user data.
+Caution: define the null model, sampling procedure, significance/threshold rule, and random seed in advance. Do not select the graph threshold using test labels.
+10. Experiment E5 — Selective prediction trade-off
+Objective
+Measure whether the system can increase reliability on automatically classified accounts by abstaining on uncertain examples, and quantify the cost of abstention.
+Methods
+Confidence threshold; temperature-scaled confidence threshold; account-level conformal method; campaign-aware method; proposed selective predictor.
+Procedure
+Select thresholds or target operating points on validation/calibration data only.
+Sweep a predeclared range of confidence thresholds without test-driven tuning.
+At each operating point, record the fraction automatically classified, abstention rate, selective accuracy, FPR among automatic decisions, and prediction-set properties if applicable.
+Plot selective risk/accuracy against coverage or automatic-decision rate.
+Compare methods at similar coverage levels where possible.
+Report whether reliability improvements are obtained only by abstaining on a very large fraction of accounts.
+Required outputs
+Selective risk/accuracy versus coverage plot.
+Table comparing methods at matched coverage levels.
+Explicit definition of how empty or multi-label prediction sets are handled.
+Do not report selective accuracy without the corresponding coverage/abstention rate. A model that predicts only a few easy cases may have high selective accuracy but limited utility.
+11. Experiment E6 — Robustness tests
+Objective
+Assess sensitivity to realistic data imperfections and benign behavior that may resemble coordination.
+Stress conditions
+Condition
+How to implement
+What to report
+Missing events
+Remove a predeclared fraction of events at multiple severity levels; preserve a copy of the original data.
+Detection metrics, graph change, and calibration/selective metrics by severity.
+Timestamp perturbation
+Perturb timestamps within a justified range while preserving valid formats and split rules.
+Metric change versus perturbation level.
+Low activity
+Evaluate performance on low-activity accounts/groups using a predeclared activity definition.
+Per-stratum metrics and abstention rate.
+Benign synchronization
+Create or identify benign groups with synchronized activity where labels and design justify the test.
+False-positive rate and group-level false alarms.
+Group-size variation
+Stratify groups by size using predefined bins if sample sizes support it.
+Metrics and uncertainty by group-size stratum.
+
+Procedure
+Define perturbation levels before running experiments.
+Apply perturbations only to the intended data fields and retain an unperturbed reference.
+Do not change ground-truth labels simply because input events are perturbed.
+Evaluate all models on matched perturbed versions where feasible.
+Report robustness curves and the size of the performance drop.
+Document synthetic assumptions when stress conditions are simulated rather than observed in real data.
+12. Experiment E7 — Computational scalability
+Objective
+Quantify the computational cost of the full pipeline and identify which components dominate runtime and memory.
+Measurements
+Raw-data loading and preprocessing time.
+Feature extraction time.
+Temporal graph construction time and number of edges.
+Null-model estimation/correction time.
+Model training time per epoch and total training time.
+Calibration time.
+Inference latency per account or batch, with batch size specified.
+Peak CPU/GPU memory and hardware/software configuration.
+Procedure
+Record CPU, GPU (if any), RAM, operating system, Python version, framework versions, and thread settings.
+Run timing experiments under documented conditions; avoid comparing timings measured on different hardware without qualification.
+Measure each pipeline component separately and report whether warm-up runs were excluded.
+Evaluate multiple dataset sizes or graph sizes if the available data supports them.
+Report runtime and memory together with predictive performance.
+Required outputs
+Runtime table by component.
+Runtime versus number of accounts/edges plot where multiple sizes are available.
+Memory-use table and a short bottleneck analysis.
+13. Experiment E8 — Cross-dataset generalization
+Objective
+Test whether the trained detector transfers to a separate dataset without tuning on target labels.
+Procedure
+Select a source and target dataset with compatible bot/human labels and overlapping feature definitions.
+Train and tune on the source dataset only.
+Document any feature mapping and exclude target-only features unless the protocol explicitly supports them without label leakage.
+Evaluate on the target dataset without fitting hyperparameters or thresholds to target test labels.
+If target calibration is studied, define it as a separate adaptation experiment and disclose the target calibration data.
+Report detection metrics, calibration/selective metrics where valid, and feature incompatibilities.
+Required outputs
+Source-to-target results table.
+Feature/label compatibility table.
+Limitations explaining dataset differences and any preprocessing required.
+If datasets have incompatible labels or feature semantics, do not force an invalid direct comparison. Report the incompatibility and choose a defensible alternative.
+14. Required files and directory structure
+Keep raw data separate from processed data and experiment outputs. Do not overwrite original datasets.
+Path/file
+Contents
+data/raw/
+Original data or instructions/scripts to obtain it; follow license restrictions.
+data/processed/
+Cleaned tables, ID mappings, split manifests, feature files.
+configs/
+Dataset, model, split, calibration, and robustness settings.
+src/data_audit.py
+Dataset counts, missingness, duplicate and leakage checks.
+src/preprocess.py
+Deterministic preprocessing and feature generation.
+src/build_graph.py
+Static/temporal graph construction and null correction.
+src/train_baselines.py
+Classical and graph baseline training.
+src/train_proposed.py
+Proposed model training.
+src/calibrate.py
+Calibration and selective prediction methods.
+src/evaluate.py
+Metrics, group-level analysis, confidence intervals.
+results/metrics.csv
+One row per run/model/split/condition.
+results/group_metrics.csv
+Per-group metrics and group-level reliability.
+results/runtime.csv
+Component-level timing and memory.
+results/figures/
+Saved plots used in the report.
+logs/
+Run logs, package versions, seed, configuration.
+README.md
+Exact commands and step-by-step reproduction instructions.
+
+14.1 Suggested metrics.csv columns
+dataset, protocol, experiment, model, variant, seed, split_id, macro_f1, pr_auc, roc_auc, mcc, fpr, brier_score, log_loss, ece, empirical_coverage, group_miscoverage_mean, group_miscoverage_worst, mean_set_size, singleton_rate, abstention_rate, selective_accuracy, train_seconds, inference_ms_per_account, peak_memory_mb, notes
+14.2 Suggested group_metrics.csv columns
+dataset, protocol, experiment, model, group_id, group_type, group_size, macro_f1, pr_auc, fpr, coverage, miscoverage, mean_set_size, singleton_rate, abstention_rate, seed, notes
+Do not use personal or sensitive account information in report examples. Use pseudonymous IDs and follow the dataset's permitted-use requirements.
+15. Recommended implementation order
+Stage 1 — Audit data and confirm that the key fields for labels, timestamps, interactions, and group splits exist.
+Stage 2 — Implement a clean baseline pipeline with RF and SVM and validate all metrics/splits.
+Stage 3 — Implement GraphSAGE/BotRGCN or the most compatible graph baseline.
+Stage 4 — Implement profile and rhythm feature extraction, then static and temporal graph variants.
+Stage 5 — Implement the full proposed detector and run the E1/E2/E4 ablations.
+Stage 6 — Implement calibration/selective prediction baselines and run E3/E5.
+Stage 7 — Run robustness and scalability tests (E6/E7).
+Stage 8 — Run cross-dataset generalization (E8) if compatible data are available.
+Stage 9 — Re-run selected experiments for repeatability, calculate uncertainty, and prepare final tables/figures.
+Stage 10 — Write the report, including failed runs, exclusions, assumptions, and limitations.
+16. Result tables to prepare
+Table A: Main detection comparison
+Model
+Protocol
+Macro-F1
+PR-AUC
+ROC-AUC
+MCC
+FPR
+95% CI / variability
+RF
+P0 / P1 / P3
+Fill after run
+Fill after run
+Fill after run
+Fill after run
+Fill after run
+Fill after run
+SVM
+P0 / P1 / P3
+Fill after run
+Fill after run
+Fill after run
+Fill after run
+Fill after run
+Fill after run
+GraphSAGE
+P0 / P1 / P3
+Fill after run
+Fill after run
+Fill after run
+Fill after run
+Fill after run
+Fill after run
+BotRGCN
+P0 / P1 / P3
+Fill after run
+Fill after run
+Fill after run
+Fill after run
+Fill after run
+Fill after run
+Proposed full model
+P0 / P1 / P3
+Fill after run
+Fill after run
+Fill after run
+Fill after run
+Fill after run
+Fill after run
+
+Table B: Ablation
+Variant
+Macro-F1
+PR-AUC
+MCC
+FPR
+Difference from full model
+Interpretation
+Profile-only
+After run
+After run
+After run
+After run
+After run
+After run
+Profile + rhythm
+After run
+After run
+After run
+After run
+After run
+After run
+Static graph
+After run
+After run
+After run
+After run
+After run
+After run
+Temporal graph, no correction
+After run
+After run
+After run
+After run
+After run
+After run
+Full model
+After run
+After run
+After run
+After run
+Reference
+After run
+
+Table C: Calibration/selective prediction
+Method
+Empirical coverage
+Group miscoverage
+Mean set size
+Singleton rate
+Abstention rate
+Selective accuracy
+Confidence threshold
+After run
+After run
+N/A if no sets
+N/A if no sets
+After run
+After run
+Temperature scaling
+After run
+After run
+N/A if no sets
+N/A if no sets
+After run
+After run
+Account-level conformal
+After run
+After run
+After run
+After run
+After run
+After run
+Campaign-aware method
+After run
+After run
+After run
+After run
+After run
+After run
+
+17. Figures recommended for the paper
+Fig. 1: Data and split protocol diagram showing account, group/campaign, time, and calibration partitions.
+Fig. 2: Macro-F1 or PR-AUC under random, group-disjoint, and chronological splits.
+Fig. 3: Ablation results for profile, rhythm, static graph, temporal graph, null correction, and full model.
+Fig. 4: Per-group miscoverage distribution for calibration methods.
+Fig. 5: Selective accuracy/risk versus coverage or automatic-decision rate.
+Fig. 6: Robustness curves under event removal and timestamp perturbation.
+Fig. 7: Runtime and memory versus dataset/graph size, if multiple sizes are available.
+18. Report structure for the student
+Dataset and data audit: source, labels, groups, timestamps, graph data, exclusions.
+Preprocessing and leakage prevention: feature creation, split rules, fitting boundaries.
+Experimental setup: hardware, software, hyperparameters, seeds, compute budget.
+Baselines and proposed model: inputs, implementation sources, deviations from original methods.
+Experiments E1–E8: objective, setup, metrics, results, interpretation.
+Statistical analysis: repeated runs, group-level uncertainty, paired comparisons where appropriate.
+Threats to validity: dataset limitations, inferred campaigns, label noise, incomplete event history, implementation differences.
+Reproducibility: scripts, configurations, run commands, and output files.
+19. Common mistakes to avoid
+Using a random split alone to claim campaign-shift robustness.
+Allowing the same campaign/group to occur in both training and test sets when claiming group-disjoint evaluation.
+Fitting feature normalization, feature selection, thresholds, or calibration using test data.
+Using future events to create features for earlier prediction times.
+Comparing models with different information inputs without explaining the difference.
+Treating inferred communities as verified campaigns.
+Reporting only accuracy or ROC-AUC for an imbalanced dataset.
+Reporting selective accuracy without coverage/abstention rate.
+Calling empirical coverage a formal guarantee.
+Claiming a baseline was reproduced when its implementation was substantially modified.
+Reporting one best seed without variability or a rationale.
+Inventing results, citations, or baseline scores.
+20. Completion checklist
+Dataset audit completed and documented.
+Labels, timestamps, group metadata, and feature availability verified.
+Split manifests saved and leakage checks passed.
+RF and SVM baselines completed.
+At least one compatible graph baseline completed.
+Proposed model and core ablations completed.
+E1–E8 completed where the required data are available, or limitations documented.
+Calibration assumptions and prediction/abstention rules written down.
+All result tables generated from saved metric files.
+Uncertainty/statistical analysis reported at an appropriate unit.
+Runtime and memory measurements recorded.
+Code, configs, versions, seeds, and README supplied.
+No fabricated or unexecuted results included.
+21. Suggested starter references to verify
+Use the original papers and official implementations for each method. Verify bibliographic details, versions, dataset availability, and licensing before citing or implementing. The list below identifies method families, not a substitute for checking the original source.
+GraphSAGE: inductive representation learning on large graphs.
+BotRGCN: heterogeneous graph neural network approach to social bot detection.
+TGN and TGAT: temporal graph learning methods for timestamped interactions.
+BotSTIP: spatio-temporal/hypergraph-based social bot detection; verify exact paper and code.
+BotDGT: dynamic graph transformer approach; verify exact paper and code.
+Split conformal prediction and temperature scaling: use original method papers and implement the precise score/quantile/calibration rules.
+Final instruction to the student
+The goal is not to make the proposed method win every table. The goal is to conduct a fair, reproducible evaluation of the paper's claims. If a result contradicts the hypothesis, report it, investigate it, and discuss its implications. A transparent negative or mixed result is scientifically stronger than an unsupported claim.

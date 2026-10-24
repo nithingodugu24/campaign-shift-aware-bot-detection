@@ -1,0 +1,13 @@
+{
+  "experiment": "E6",
+  "study": "synthetic",
+  "canonical_source": "results/synthetic",
+  "source_sha256": {
+    "metrics.csv": "0918e61f9f0994f6345c1f28f90bbe87870e00de5ec56c94a6afd22beadfda00",
+    "group_metrics.csv": "46c749304dc2d92b4c6686568c5f1a1a6d320634a58ebd675686f61f5f31da78"
+  },
+  "exported_row_counts": {
+    "metrics.csv": 150,
+    "group_metrics.csv": 955
+  }
+}

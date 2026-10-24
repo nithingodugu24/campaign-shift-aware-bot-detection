@@ -1,0 +1,30 @@
+experiment,status,reason,dataset,data_kind,group_type,protocol,seed,split_id,model,status_scope
+E1-E5,executed,"Partition-local models, graph ablations and calibration saved",synthetic_source,synthetic,synthetic,P0,11.0,P0_s11,,shared_detection_protocol
+E1-E5,executed,"Partition-local models, graph ablations and calibration saved",synthetic_source,synthetic,synthetic,P0,23.0,P0_s23,,shared_detection_protocol
+E1-E5,executed,"Partition-local models, graph ablations and calibration saved",synthetic_source,synthetic,synthetic,P0,37.0,P0_s37,,shared_detection_protocol
+E1-E5,executed,"Partition-local models, graph ablations and calibration saved",synthetic_source,synthetic,synthetic,P1,11.0,P1_s11,,shared_detection_protocol
+E1-E5,executed,"Partition-local models, graph ablations and calibration saved",synthetic_source,synthetic,synthetic,P1,23.0,P1_s23,,shared_detection_protocol
+E1-E5,executed,"Partition-local models, graph ablations and calibration saved",synthetic_source,synthetic,synthetic,P1,37.0,P1_s37,,shared_detection_protocol
+E1-E5,executed,"Partition-local models, graph ablations and calibration saved",synthetic_source,synthetic,synthetic,P3,11.0,P3_s11,,shared_detection_protocol
+E1-E5,executed,"Partition-local models, graph ablations and calibration saved",synthetic_source,synthetic,synthetic,P3,23.0,P3_s23,,shared_detection_protocol
+E1-E5,executed,"Partition-local models, graph ablations and calibration saved",synthetic_source,synthetic,synthetic,P3,37.0,P3_s37,,shared_detection_protocol
+baseline,not_reproduced,Official multimodal encoders and full required relational inputs not reproduced,,,,,,,BotRGCN,baseline_availability
+baseline,not_reproduced,Official heterogeneous transformer not reproduced,,,,,,,RGT,baseline_availability
+baseline,not_reproduced,Shared-object observations are not assumed equivalent to verified temporal interaction edges,,,,,,,TGN/TGAT,baseline_availability
+baseline,not_reproduced,Official dynamic/hypergraph preprocessing and checkpoints not reproduced,,,,,,,BotDGT/BotSTIP,baseline_availability
+baseline,not_reproduced,Not reproduced; GroupDRO and group reweighting supplied as explicitly named alternatives,,,,,,,IRM,baseline_availability
+E1-E5,executed,"Partition-local models, graph ablations and calibration saved",synthetic_source,synthetic,synthetic,P2,11.0,P2_s11,,shared_detection_protocol
+E1-E5,executed,"Partition-local models, graph ablations and calibration saved",synthetic_source,synthetic,synthetic,P2,23.0,P2_s23,,shared_detection_protocol
+E1-E5,executed,"Partition-local models, graph ablations and calibration saved",synthetic_source,synthetic,synthetic,P2,37.0,P2_s37,,shared_detection_protocol
+E1-E5,executed,"Partition-local models, graph ablations and calibration saved",synthetic_source,synthetic,synthetic,P0,11.0,P0_s11,,shared_detection_protocol
+E1-E5,executed,"Partition-local models, graph ablations and calibration saved",synthetic_source,synthetic,synthetic,P0,23.0,P0_s23,,shared_detection_protocol
+E1-E5,executed,"Partition-local models, graph ablations and calibration saved",synthetic_source,synthetic,synthetic,P0,37.0,P0_s37,,shared_detection_protocol
+E1-E5,executed,"Partition-local models, graph ablations and calibration saved",synthetic_source,synthetic,synthetic,P1,11.0,P1_s11,,shared_detection_protocol
+E1-E5,executed,"Partition-local models, graph ablations and calibration saved",synthetic_source,synthetic,synthetic,P1,23.0,P1_s23,,shared_detection_protocol
+E1-E5,executed,"Partition-local models, graph ablations and calibration saved",synthetic_source,synthetic,synthetic,P1,37.0,P1_s37,,shared_detection_protocol
+E1-E5,executed,"Partition-local models, graph ablations and calibration saved",synthetic_source,synthetic,synthetic,P2,11.0,P2_s11,,shared_detection_protocol
+E1-E5,executed,"Partition-local models, graph ablations and calibration saved",synthetic_source,synthetic,synthetic,P2,23.0,P2_s23,,shared_detection_protocol
+E1-E5,executed,"Partition-local models, graph ablations and calibration saved",synthetic_source,synthetic,synthetic,P2,37.0,P2_s37,,shared_detection_protocol
+E1-E5,executed,"Partition-local models, graph ablations and calibration saved",synthetic_source,synthetic,synthetic,P3,11.0,P3_s11,,shared_detection_protocol
+E1-E5,executed,"Partition-local models, graph ablations and calibration saved",synthetic_source,synthetic,synthetic,P3,23.0,P3_s23,,shared_detection_protocol
+E1-E5,executed,"Partition-local models, graph ablations and calibration saved",synthetic_source,synthetic,synthetic,P3,37.0,P3_s37,,shared_detection_protocol

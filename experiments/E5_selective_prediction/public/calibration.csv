@@ -1,0 +1,19 @@
+dataset,data_kind,group_type,protocol,seed,split_id,model,variant,train_accounts,calibration_groups,method,q,alpha,units,feasible,corrected_calibration_risk,temperature,notes
+cresci2017_pilot,real,proxy_collection,P0,11,P0_s11,Proposed,Proposed,530,9,campaign_crc,1.0,0.1,9,True,0.1,1.0,Empirical evaluation only; exchangeability under campaign shift is unverified
+cresci2017_pilot,real,proxy_collection,P0,11,P0_s11,Proposed,Proposed,530,9,confidence,0.5,0.1,159,True,,1.0,Validation-selected descriptive abstention rule; no selective-risk guarantee
+cresci2017_pilot,real,proxy_collection,P0,11,P0_s11,Proposed,Proposed,530,9,temperature,0.5,0.1,159,True,,3.3457556023790227,Validation-selected descriptive abstention rule; no selective-risk guarantee
+cresci2017_pilot,real,proxy_collection,P0,11,P0_s11,Proposed,Proposed,530,9,account_conformal,0.3268606267314963,0.1,212,True,,1.0,Empirical evaluation only; exchangeability under campaign shift is unverified
+cresci2017_pilot,real,proxy_collection,P0,11,P0_s11,Proposed,Proposed,530,9,group_max_conformal,1.0,0.1,9,True,,1.0,"Split conformal on maximum account score per group; targets entire-group coverage under exchangeable groups, not CRC mean loss"
+cresci2017_pilot,real,proxy_collection,P0,11,P0_s11,Proposed,Proposed,530,9,campaign_crc,1.0,0.1,9,True,0.1,1.0,Empirical evaluation only; exchangeability under campaign shift is unverified
+cresci2017_pilot,real,proxy_collection,P0,23,P0_s23,Proposed,Proposed,530,9,campaign_crc,1.0,0.1,9,True,0.1,1.0,Empirical evaluation only; exchangeability under campaign shift is unverified
+cresci2017_pilot,real,proxy_collection,P0,23,P0_s23,Proposed,Proposed,530,9,confidence,0.5,0.1,159,True,,1.0,Validation-selected descriptive abstention rule; no selective-risk guarantee
+cresci2017_pilot,real,proxy_collection,P0,23,P0_s23,Proposed,Proposed,530,9,temperature,0.5,0.1,159,True,,2.612636997327872,Validation-selected descriptive abstention rule; no selective-risk guarantee
+cresci2017_pilot,real,proxy_collection,P0,23,P0_s23,Proposed,Proposed,530,9,account_conformal,0.4532493082732375,0.1,212,True,,1.0,Empirical evaluation only; exchangeability under campaign shift is unverified
+cresci2017_pilot,real,proxy_collection,P0,23,P0_s23,Proposed,Proposed,530,9,group_max_conformal,0.9999952879317864,0.1,9,True,,1.0,"Split conformal on maximum account score per group; targets entire-group coverage under exchangeable groups, not CRC mean loss"
+cresci2017_pilot,real,proxy_collection,P0,23,P0_s23,Proposed,Proposed,530,9,campaign_crc,1.0,0.1,9,True,0.1,1.0,Empirical evaluation only; exchangeability under campaign shift is unverified
+cresci2017_pilot,real,proxy_collection,P0,37,P0_s37,Proposed,Proposed,530,9,campaign_crc,1.0,0.1,9,True,0.1,1.0,Empirical evaluation only; exchangeability under campaign shift is unverified
+cresci2017_pilot,real,proxy_collection,P0,37,P0_s37,Proposed,Proposed,530,9,confidence,0.5,0.1,159,True,,1.0,Validation-selected descriptive abstention rule; no selective-risk guarantee
+cresci2017_pilot,real,proxy_collection,P0,37,P0_s37,Proposed,Proposed,530,9,temperature,0.5,0.1,159,True,,2.9451374050181114,Validation-selected descriptive abstention rule; no selective-risk guarantee
+cresci2017_pilot,real,proxy_collection,P0,37,P0_s37,Proposed,Proposed,530,9,account_conformal,0.2863895084377976,0.1,212,True,,1.0,Empirical evaluation only; exchangeability under campaign shift is unverified
+cresci2017_pilot,real,proxy_collection,P0,37,P0_s37,Proposed,Proposed,530,9,group_max_conformal,0.9999999999990729,0.1,9,True,,1.0,"Split conformal on maximum account score per group; targets entire-group coverage under exchangeable groups, not CRC mean loss"
+cresci2017_pilot,real,proxy_collection,P0,37,P0_s37,Proposed,Proposed,530,9,campaign_crc,1.0,0.1,9,True,0.1,1.0,Empirical evaluation only; exchangeability under campaign shift is unverified

@@ -1,0 +1,24 @@
+# E8 Cross dataset generalization
+
+## Contents
+
+Each study subfolder contains the saved evidence for this experiment. `public` uses the Cresci-2017 pilot, `collection` uses proxy collection holdouts, and `synthetic` is an explicitly generated validation fixture. Check each study's `status.csv` and source metadata for unsupported cases.
+
+## Implementation
+
+- [run_experiments.py](../../src/run_experiments.py)
+- [predict.py](../../src/predict.py)
+
+The experiments share trained detectors and audited partitions. Checkpoints and split manifests remain under `results/<study>/` so every experiment refers to the same fitted models and held-out IDs.
+
+## Reproduction
+
+From the project root, use `run_all.ps1` to reproduce the underlying studies. To refresh only this folder from existing results:
+
+```powershell
+.venv\Scripts\python.exe -m scripts.organize_experiments --experiment E8
+```
+
+Refreshing exports does not retrain models. Full setup commands are in [the project README](../../README.md).
+
+Real targets provide profile snapshots only. Temporal/graph transfer is unsupported there; compatible model predictions remain in the linked canonical transfer directories.

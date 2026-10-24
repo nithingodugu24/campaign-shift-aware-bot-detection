@@ -1,0 +1,10 @@
+experiment,status,reason,dataset,data_kind,group_type,protocol,seed,split_id,model,status_scope
+baseline,not_reproduced,Official multimodal encoders and full required relational inputs not reproduced,,,,,,,BotRGCN,baseline_availability
+baseline,not_reproduced,Official heterogeneous transformer not reproduced,,,,,,,RGT,baseline_availability
+baseline,not_reproduced,Shared-object observations are not assumed equivalent to verified temporal interaction edges,,,,,,,TGN/TGAT,baseline_availability
+baseline,not_reproduced,Official dynamic/hypergraph preprocessing and checkpoints not reproduced,,,,,,,BotDGT/BotSTIP,baseline_availability
+baseline,not_reproduced,Not reproduced; GroupDRO and group reweighting supplied as explicitly named alternatives,,,,,,,IRM,baseline_availability
+E6,unsupported_subtest,No independently identified benign synchronized human groups,,,,,11.0,,,this_experiment
+E6,unsupported_subtest,No independently identified benign synchronized human groups,,,,,23.0,,,this_experiment
+E6,unsupported_subtest,No independently identified benign synchronized human groups,,,,,37.0,,,this_experiment
+E6,executed,Frozen-model perturbation evaluation; labels unchanged,,,,,,,,this_experiment
